@@ -55,7 +55,7 @@ AContactHostileCharacter::AContactHostileCharacter() :
 	GetMesh()->SetIsReplicated(true);
 	GetCapsuleComponent()->SetIsReplicated(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-	//GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	Movement->NavAgentProps.bCanCrouch = true;
@@ -151,9 +151,10 @@ float AContactHostileCharacter::CalcProneCollisions(float MoveValue)
 {
 	float Distance = 125.0f * MoveValue;
 	FVector LineDistance = GetActorLocation() + (GetActorForwardVector() * Distance);
-	DrawDebugLine(GetWorld(), GetActorLocation(), LineDistance, FColor::Purple);
+	FVector StartLocation = GetActorLocation() + (GetActorForwardVector() * (CapsuleStandHalfHeight * MoveValue));
+	//DrawDebugLine(GetWorld(), StartLocation, LineDistance, FColor::Purple);
 	FHitResult HitResult;
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, GetActorLocation(), LineDistance, ECollisionChannel::ECC_Visibility);
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, LineDistance, ECollisionChannel::ECC_Visibility);
 	if (bHit)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("**Line Hit**"));

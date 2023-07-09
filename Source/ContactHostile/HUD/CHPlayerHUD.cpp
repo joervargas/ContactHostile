@@ -59,6 +59,6 @@ void ACHPlayerHUD::DrawCrosshair(UTexture2D* Texture, const FVector2D& ViewportC
 		TextureWidth, TextureHeight,
 		0.f, 0.f,
 		1.f, 1.f,
-		FLinearColor::White
+		CrosshairColor
 	);
 }
