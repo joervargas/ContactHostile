@@ -107,7 +107,7 @@ void AContactHostileCharacter::Tick(float DeltaTime)
 	CalcAimOffset(DeltaTime);
 	CanProne();
 	InterpProneRelativeLocations();
-
+	HideCharacterIfCameraClose();
 }
 
 // Called to bind functionality to input
@@ -465,6 +465,26 @@ void AContactHostileCharacter::InterpProneRelativeLocations()
 		GetCapsuleComponent()->SetCapsuleSize(GetCapsuleComponent()->GetUnscaledCapsuleRadius(), FMath::Lerp(GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight(), CapsuleProneHalfHeight, 0.5f));
 	}
 
+}
+
+void AContactHostileCharacter::HideCharacterIfCameraClose()
+{
+	if (!IsLocallyControlled()) return;
+
+	if ((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraDistanceThreshold)
+	{
+		GetMesh()->SetVisibility(false);
+		if (Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		{
+			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true;
+		}
+	} else {
+		GetMesh()->SetVisibility(true);
+		if (Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		{
+			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false;
+		}
+	}
 }
 
 bool AContactHostileCharacter::CrouchReady()

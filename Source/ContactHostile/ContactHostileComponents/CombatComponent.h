@@ -49,6 +49,9 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastFire(const FVector_NetQuantize& TraceHitTarget);
 
+	/*
+	* Line trace from camera to crosshairs
+	*/
 	void TraceUnderCrosshairs(FHitResult& TraceHitResult);
 
 	void SetHUDCrosshairSpread(float DeltaTime);

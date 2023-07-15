@@ -171,6 +171,9 @@ private:
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bSprintButtonPressed;
 
+	UPROPERTY(EditAnywhere)
+	float CameraDistanceThreshold = 150.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess))
 	class UWidgetComponent* OverheadWidget;
 
@@ -213,6 +216,10 @@ private:
 
 	void InterpProneRelativeLocations();
 
+	/*
+	* Hides the character and weapon mesh when the camera is too close
+	*/
+	void HideCharacterIfCameraClose();
 
 public:	
 
