@@ -87,8 +87,8 @@ protected:
 
 private:
 
-	UPROPERTY(VisibleAnywhere, Category = "Weapon Properties")
-	USceneComponent* WeaponTransform;
+	//UPROPERTY(VisibleAnywhere, Category = "Weapon Properties")
+	//USceneComponent* WeaponTransform;
 
 	UPROPERTY(VisibleAnywhere, Category = "Weapon Properties")
 	USkeletalMeshComponent* WeaponMesh;
@@ -122,4 +122,6 @@ public:
 
 	FORCEINLINE float GetAimFOV() const { return AimFOV; }
 	FORCEINLINE float GetAimInterpSpeed() const { return AimInterpSpeed; }
+
+	FORCEINLINE void SetHideLocally(bool bHide) { WeaponMesh->SetHiddenInGame(bHide); }
 };

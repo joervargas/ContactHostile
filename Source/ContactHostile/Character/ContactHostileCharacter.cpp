@@ -56,6 +56,7 @@ AContactHostileCharacter::AContactHostileCharacter() :
 	GetCapsuleComponent()->SetIsReplicated(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	Movement->NavAgentProps.bCanCrouch = true;
@@ -469,20 +470,20 @@ void AContactHostileCharacter::InterpProneRelativeLocations()
 
 void AContactHostileCharacter::HideCharacterIfCameraClose()
 {
-	if (!IsLocallyControlled()) return;
+	if (!IsLocallyControlled()) { return; }
 
 	if ((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraDistanceThreshold)
 	{
-		GetMesh()->SetVisibility(false);
-		if (Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		GetMesh()->SetOwnerNoSee(true);
+		if ( Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
 		{
-			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true;
+			Combat->EquippedWeapon->GetWeaponMesh()->SetOwnerNoSee(true);
 		}
 	} else {
-		GetMesh()->SetVisibility(true);
-		if (Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		GetMesh()->SetOwnerNoSee(false);
+		if ( Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
 		{
-			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false;
+			Combat->EquippedWeapon->GetWeaponMesh()->SetOwnerNoSee(false);
 		}
 	}
 }

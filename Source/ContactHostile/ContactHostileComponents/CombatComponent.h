@@ -34,7 +34,16 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	AWeapon* SpawnDefaultWeapon();
+	void SpawnDefaultWeapon();
+
+	UFUNCTION(Server, Reliable)
+	void ServerSpawnDefaultWeapon();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSpawnDefaultWeapon();
+
+	UFUNCTION(Client, Reliable)
+	void ClientSpawnDefaultWeapon();
 
 	void SetAiming(bool bIsAiming);
 
@@ -56,14 +65,20 @@ protected:
 
 	void SetHUDCrosshairSpread(float DeltaTime);
 
+	void AttachToRightHand(AActor* Item);
+
 private:
 
 	AContactHostileCharacter* CHCharacter;
 	ACHPlayerController* PlayerController;
 	ACHPlayerHUD* HUD;
 
+	//UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	UPROPERTY(Replicated)
 	AWeapon* EquippedWeapon;
+
+	//UFUNCTION()
+	//void OnRep_EquippedWeapon();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Weapon, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
@@ -104,6 +119,9 @@ private:
 
 public:	
 
+
 	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
-		
+	
+	UFUNCTION(BlueprintCallable)
+	void HideWeaponForOwner(bool bHide);
 };

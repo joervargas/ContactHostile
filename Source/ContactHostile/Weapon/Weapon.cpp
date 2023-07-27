@@ -18,13 +18,14 @@ AWeapon::AWeapon() :
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true; // Needs to be true to have replicating variables
+	SetReplicateMovement(true);
 
-	WeaponTransform = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponTransform"));
-	SetRootComponent(WeaponTransform);
+	//WeaponTransform = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponTransform"));
+	//SetRootComponent(WeaponTransform);
 
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponMesh->SetupAttachment(RootComponent);
-	//SetRootComponent(WeaponMesh);
+	//WeaponMesh->SetupAttachment(RootComponent);
+	SetRootComponent(WeaponMesh);
 
 	WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
 	WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);

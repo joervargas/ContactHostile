@@ -37,8 +37,10 @@ void UCombatComponent::BeginPlay()
 	Super::BeginPlay();
 
 	PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(CHCharacter->Controller) : PlayerController;
-	
-	EquipWeapon(SpawnDefaultWeapon());
+	if (CHCharacter)
+	{
+		SpawnDefaultWeapon();
+	}
 
 	if (CHCharacter->GetFollowCamera())
 	{
@@ -56,8 +58,10 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		//FHitResult HitResult;
 		TraceUnderCrosshairs(HitResult);
 		//HitTarget = HitResult.ImpactPoint;
-
-		SetHUDCrosshairSpread(DeltaTime);
+		if (HUD)
+		{
+			SetHUDCrosshairSpread(DeltaTime);
+		}
 		InterpZoomFOV(DeltaTime);
 	}
 }
@@ -102,6 +106,18 @@ void UCombatComponent::SetHUDCrosshairSpread(float DeltaTime)
 	}
 }
 
+void UCombatComponent::AttachToRightHand(AActor* Item)
+{
+	if (CHCharacter == nullptr || CHCharacter->GetMesh() == nullptr || Item == nullptr) { return; }
+
+	//EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+	const USkeletalMeshSocket* HandSocket = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+	if (HandSocket)
+	{
+		HandSocket->AttachActor(Item, CHCharacter->GetMesh());
+	}
+}
+
 void UCombatComponent::InterpZoomFOV(float DeltaTime)
 {
 	if (EquippedWeapon == nullptr) return;
@@ -120,13 +136,86 @@ void UCombatComponent::InterpZoomFOV(float DeltaTime)
 	}
 }
 
-AWeapon* UCombatComponent::SpawnDefaultWeapon()
+void UCombatComponent::HideWeaponForOwner(bool bHide)
 {
-	if (DefaultWeaponClass)
+	if (EquippedWeapon && EquippedWeapon->GetWeaponMesh())
 	{
-		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+		EquippedWeapon->GetWeaponMesh()->SetOwnerNoSee(bHide);
 	}
-	return nullptr;
+}
+
+void UCombatComponent::SpawnDefaultWeapon()
+{
+	UE_LOG(LogTemp, Warning, TEXT("SpawnDefaultWeapon() Called)"));
+	if (DefaultWeaponClass && CHCharacter)
+	{
+		//if (CHCharacter->HasAuthority())
+		//{
+			//if (EquippedWeapon == nullptr)
+			//{
+				AWeapon* SpawnedWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+				EquipWeapon( SpawnedWeapon );
+				//if (EquippedWeapon != SpawnedWeapon)
+				//{
+				//	SpawnedWeapon->Destroy();
+				//}
+			//}
+			//MulticastSpawnDefaultWeapon();
+			//ServerSpawnDefaultWeapon();
+			//ClientSpawnDefaultWeapon();
+			//EquipWeapon(DefaultWeaponClass.GetDefaultObject());
+		//}
+		//else 
+		//{
+			//ServerSpawnDefaultWeapon();
+			//ClientSpawnDefaultWeapon();
+		//}
+		//if (EquippedWeapon == nullptr && CHCharacter->HasAuthority())
+		//{
+		//	ServerSpawnDefaultWeapon();
+		//}
+	}
+}
+
+void UCombatComponent::ServerSpawnDefaultWeapon_Implementation()
+{
+	//UE_LOG(LogTemp, Warning, TEXT("ServerSpawnDefaultWeapon() Called)"));
+	//if (DefaultWeaponClass && CHCharacter)
+	//{
+	//	if (EquippedWeapon == nullptr)
+	//	{
+			EquipWeapon( GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass) );
+	//	}
+	//}
+	//MulticastSpawnDefaultWeapon();
+}
+
+void UCombatComponent::MulticastSpawnDefaultWeapon_Implementation()
+{
+//	if (DefaultWeaponClass && CHCharacter)
+//	{
+//		FActorSpawnParameters SpawnParameters;
+//		SpawnParameters.Owner = CHCharacter;
+//		//FTransform SpawnTransform = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"))->GetSocketTransform();
+		AWeapon* SpawnedWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+		EquipWeapon( SpawnedWeapon );
+//	}
+}
+
+void UCombatComponent::ClientSpawnDefaultWeapon_Implementation()
+{
+	if (DefaultWeaponClass && CHCharacter)
+	{
+		//FActorSpawnParameters SpawnParameters;
+		//SpawnParameters.Owner = CHCharacter;
+
+		AWeapon* SpawnedWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+		EquipWeapon(SpawnedWeapon);
+		//if (EquippedWeapon != nullptr)
+		//{
+		//	EquipWeapon(EquippedWeapon);
+		//}
+	}
 }
 
 void UCombatComponent::SetAiming(bool bIsAiming)
@@ -155,6 +244,21 @@ void UCombatComponent::FireButtonPressed(bool bPressed)
 			CrosshairShootingFactor = 0.75f;
 		}
 	}
+}
+
+void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{
+	if (EquippedWeapon == nullptr) return;
+	if (CHCharacter)
+	{
+		CHCharacter->PlayFireMontage(bAiming); // Player fire animation
+		EquippedWeapon->Fire(TraceHitTarget); // Weapon fire animation
+	}
+}
+
+void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{
+	MulticastFire(TraceHitTarget);
 }
 
 void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
@@ -192,13 +296,16 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 			Start, End,
 			ECollisionChannel::ECC_Visibility
 		);
-		if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>())
+		if (HUD)
 		{
-			HUD->SetHUDPackageCrosshairColor(FLinearColor::Red);
-		}
-		else
-		{
-			HUD->SetHUDPackageCrosshairColor(FLinearColor::White);
+			if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>())
+			{
+				HUD->SetHUDPackageCrosshairColor(FLinearColor::Red);
+			}
+			else
+			{
+				HUD->SetHUDPackageCrosshairColor(FLinearColor::White);
+			}
 		}
 		//if (TraceHitResult.bBlockingHit)
 		//{
@@ -207,20 +314,13 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 	}
 }
 
-void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
-{
-	if (EquippedWeapon == nullptr) return;
-	if (CHCharacter)
-	{
-		CHCharacter->PlayFireMontage(bAiming); // Player fire animation
-		EquippedWeapon->Fire(TraceHitTarget); // Weapon fire animation
-	}
-}
-
-void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
-{
-	MulticastFire(TraceHitTarget);
-}
+//void UCombatComponent::OnRep_EquippedWeapon()
+//{
+//	if (!CHCharacter || !EquippedWeapon) return;
+//	AttachToRightHand(EquippedWeapon);
+//	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+//	EquippedWeapon->SetOwner(CHCharacter);
+//}
 
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 {
@@ -230,14 +330,6 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 	EquippedWeapon = WeaponToEquip;
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
 	const USkeletalMeshSocket* HandSocket = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"));
-	if (EquippedWeapon->GetWeaponState() == EWeaponState::EWS_Equipped)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("WeaponState: Equipped"))
-	}
-	if (EquippedWeapon->GetWeaponState() == EWeaponState::EWS_Dropped)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("WeaponState: Dropped"))
-	}
 
 	if (HandSocket)
 	{

@@ -150,7 +150,7 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* CameraBoom;
 
-	UPROPERTY(VisibleAnywhere, Category = Camera)
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
 
 	UPROPERTY(EditAnywhere, Category = Movement, meta = (AllowPrivateAccess = "true"))
@@ -171,7 +171,7 @@ private:
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bSprintButtonPressed;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta = (AllowPrivateAccess = "true"))
 	float CameraDistanceThreshold = 150.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess))
@@ -183,10 +183,13 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* FireWeaponMontage; // Set in Blueprints
 
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* HitReactMontage; // Set in Blueprints
+
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
 
 	UFUNCTION(Server, Reliable)
@@ -215,11 +218,6 @@ private:
 	void CanProne();
 
 	void InterpProneRelativeLocations();
-
-	/*
-	* Hides the character and weapon mesh when the camera is too close
-	*/
-	void HideCharacterIfCameraClose();
 
 public:	
 
@@ -260,4 +258,10 @@ public:
 	//FVector GetHitTarget() const;
 	FHitResult GetHitResult() const;
 	FVector GetAimLocation() const;
+
+	/*
+	* Hides the character and weapon mesh when the camera is too close
+	*/
+	UFUNCTION(BlueprintCallable)
+	void HideCharacterIfCameraClose();
 };
