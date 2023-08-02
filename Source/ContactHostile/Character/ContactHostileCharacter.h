@@ -45,6 +45,7 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	//virtual void OnRep_ReplicatedMovement() override;
 
 protected:
 
@@ -84,6 +85,12 @@ protected:
 
 	void CalcAimOffset(float DeltaTime);
 
+	void CalcAO_Pitch();
+	
+	/*
+	* Handle TurnInPlace for Clients(SimulatedProxies)
+	*/
+	//void SimProxiesTurn();
 	void CalcTurnInPlace(float DeltaTime);
 
 private:
@@ -94,9 +101,11 @@ private:
 
 	float ForwardMovement;
 
+	//UPROPERTY(Replicated)
 	float AO_Yaw; // Aim Offset Yaw
 	float AO_Yaw_LastFrame;
 	float Interp_AO_Yaw; // for Interping Turning
+	//UPROPERTY(Replicated)
 	float AO_Pitch; // Aim Offset Pitch
 
 	FRotator StartingAimRotation;
@@ -104,6 +113,14 @@ private:
 	ESpeedModes SpeedMode;
 
 	ETurningInPlace TurningInPlace;
+	bool bRotateRootBone;
+
+	//// For turning simulated proxies
+	//float TurnThreshold = 0.5f;
+	//FRotator ProxyRotationLastFrame;
+	//FRotator ProxyRotation;
+	//float ProxyYaw;
+	//float ProxyTimeSinceLastMovementReplication;
 
 	UPROPERTY(EditAnywhere, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	int64 CrouchProneBtnThreshold = 25;
@@ -219,6 +236,12 @@ private:
 
 	void InterpProneRelativeLocations();
 
+	/*
+	* Hides the character and weapon mesh when the camera is too close
+	*/
+	UFUNCTION(BlueprintCallable)
+	void HideCharacterIfCameraClose();
+
 public:	
 
 	
@@ -238,7 +261,9 @@ public:
 	FORCEINLINE bool GetIsSprintButtonPressed() const { return bSprintButtonPressed; }
 
 	FORCEINLINE UCombatComponent* GetCombat() const { return Combat; }
+
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
+	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
@@ -254,14 +279,13 @@ public:
 	void AssignSpeeds();
 
 	void PlayFireMontage(bool bAiming);
+	void PlayHitReactMontage();
+
+	UFUNCTION(NetMulticast, unreliable)
+	void MulticastHit();
 
 	//FVector GetHitTarget() const;
 	FHitResult GetHitResult() const;
 	FVector GetAimLocation() const;
 
-	/*
-	* Hides the character and weapon mesh when the camera is too close
-	*/
-	UFUNCTION(BlueprintCallable)
-	void HideCharacterIfCameraClose();
 };

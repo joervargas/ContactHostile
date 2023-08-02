@@ -16,7 +16,7 @@
 #include "Math/UnrealMathUtility.h"
 //#include "DrawDebugHelpers.h"
 #include "ContactHostileAnimInstance.h"
-
+#include "ContactHostile/ContactHostile.h"
 
 // Sets default values
 AContactHostileCharacter::AContactHostileCharacter() :
@@ -55,6 +55,7 @@ AContactHostileCharacter::AContactHostileCharacter() :
 	GetMesh()->SetIsReplicated(true);
 	GetCapsuleComponent()->SetIsReplicated(true);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	GetMesh()->SetCollisionObjectType(ECC_SkeletalMsh);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
@@ -71,6 +72,8 @@ void AContactHostileCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	//DOREPLIFETIME(AContactHostileCharacter, AO_Pitch);
+	//DOREPLIFETIME(AContactHostileCharacter, AO_Yaw);
 	DOREPLIFETIME(AContactHostileCharacter, bSprintButtonPressed);
 	DOREPLIFETIME(AContactHostileCharacter, bIsProne);
 	DOREPLIFETIME(AContactHostileCharacter, MeshStartingRelativeLocation);
@@ -105,7 +108,17 @@ void AContactHostileCharacter::Tick(float DeltaTime)
 	SetHorizontalVelocity();
 	SetSpeed();
 	AssignSpeeds();
-	CalcAimOffset(DeltaTime);
+	//if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled())
+	//{
+		CalcAimOffset(DeltaTime);
+	//} else {
+	//	ProxyTimeSinceLastMovementReplication += DeltaTime;
+	//	if (ProxyTimeSinceLastMovementReplication > 0.25f)
+	//	{
+	//		OnRep_ReplicatedMovement();
+	//	}
+	//	CalcAO_Pitch();
+	//}
 	CanProne();
 	InterpProneRelativeLocations();
 	HideCharacterIfCameraClose();
@@ -133,6 +146,13 @@ void AContactHostileCharacter::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Pressed, this, &AContactHostileCharacter::FireButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Released, this, &AContactHostileCharacter::FireButtonReleased);
 }
+
+//void AContactHostileCharacter::OnRep_ReplicatedMovement()
+//{
+//	Super::OnRep_ReplicatedMovement();
+//	SimProxiesTurn();
+//	ProxyTimeSinceLastMovementReplication = 0.f;
+//}
 
 
 void AContactHostileCharacter::MoveForward(float Value)
@@ -579,6 +599,11 @@ void AContactHostileCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 	}
 }
 
+void AContactHostileCharacter::MulticastHit_Implementation()
+{
+	PlayHitReactMontage();
+}
+
 void AContactHostileCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
 	if (OverlappingWeapon)
@@ -651,6 +676,8 @@ void AContactHostileCharacter::CalcAimOffset(float DeltaTime)
 	// Standing still and not in air
 	if (Speed == 0.f && !bIsInAir)
 	{
+		bRotateRootBone = true;
+
 		FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRotation);
 		AO_Yaw = DeltaAimRotation.Yaw;
@@ -661,17 +688,26 @@ void AContactHostileCharacter::CalcAimOffset(float DeltaTime)
 		//bUseControllerRotationYaw = true;
 
 		CalcTurnInPlace(DeltaTime);
+
 	}
 	// Running or in air
 	if (Speed > 0.f || bIsInAir)
 	{
+		bRotateRootBone = false;
+
 		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
 		AO_Yaw = 0.f;
-		//bUseControllerRotationYaw = true;
+		bUseControllerRotationYaw = true;
 
 		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+
 	}
 
+	CalcAO_Pitch();
+}
+
+void AContactHostileCharacter::CalcAO_Pitch()
+{
 	//AO_Pitch = GetBaseAimRotation().Pitch;
 	//if (AO_Pitch > 90.f && !IsLocallyControlled())
 	//{
@@ -682,24 +718,63 @@ void AContactHostileCharacter::CalcAimOffset(float DeltaTime)
 	//}
 
 	if (bIsProne && Speed > 0.f) // if moving in prone
-	{ 
+	{
 		AO_Pitch = 0.f;
-		return; 
+		return;
 	}
 	// UE network compresses Pitch data. Get around this by turning to a vector and back to a rotation
 	AO_Pitch = GetBaseAimRotation().Vector().Rotation().Pitch;
 }
 
+//void AContactHostileCharacter::SimProxiesTurn()
+//{
+//	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
+//
+//	bRotateRootBone = false;
+//
+//	ProxyRotationLastFrame = ProxyRotation;
+//	ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator(ProxyRotation, ProxyRotationLastFrame).Yaw;
+//
+//	if (FMath::Abs(ProxyYaw) > TurnThreshold)
+//	{
+//		if (ProxyYaw > TurnThreshold)
+//		{
+//			TurningInPlace = ETurningInPlace::ETIP_Right;
+//		} 
+//		else if (ProxyYaw < -TurnThreshold)
+//		{
+//			TurningInPlace = ETurningInPlace::ETIP_Left;
+//		} else {
+//			TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+//		}
+//		return;
+//	}
+//	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+//}
+
 void AContactHostileCharacter::CalcTurnInPlace(float DeltaTime)
 {
 	AO_Yaw_LastFrame = AO_Yaw;
-	if (AO_Yaw > 45.f)
+	if (GetCharacterMovement()->IsFalling()) { return; }
+	if (!bIsProne)
 	{
-		TurningInPlace = ETurningInPlace::ETIP_Right;
-	}
-	else if (AO_Yaw < -45.f)
-	{
-		TurningInPlace = ETurningInPlace::ETIP_Left;
+		if (AO_Yaw > 45.f)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Right;
+		}
+		else if (AO_Yaw < -45.f)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Left;
+		}
+	} else { // Is in prone position
+		if (AO_Yaw > 90.f)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Right;
+		}
+		else if (AO_Yaw < -90.f)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Left;
+		}
 	}
 	if (TurningInPlace != ETurningInPlace::ETIP_NotTurning)
 	{
@@ -718,7 +793,7 @@ void AContactHostileCharacter::CalcTurnInPlace(float DeltaTime)
 void AContactHostileCharacter::PlayFireMontage(bool bAiming)
 {
 	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
-	UE_LOG(LogTemp, Warning, TEXT("PlayFireMonatage() called. "));
+
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && FireWeaponMontage)
 	{
@@ -733,6 +808,22 @@ void AContactHostileCharacter::PlayFireMontage(bool bAiming)
 		{
 			SectionName = FName("Rifle_Shoulder");
 		}
+		//SectionName = bAiming ? FName("Rifle_Ironsights") : FName("Rifle_Shoulder");
+		AnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
+void AContactHostileCharacter::PlayHitReactMontage()
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HitReactMontage)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AnimInstance->Montage_Play() "));
+		AnimInstance->Montage_Play(HitReactMontage);
+		FName SectionName;
+		SectionName = FName("HitReact_Front");
 		//SectionName = bAiming ? FName("Rifle_Ironsights") : FName("Rifle_Shoulder");
 		AnimInstance->Montage_JumpToSection(SectionName);
 	}

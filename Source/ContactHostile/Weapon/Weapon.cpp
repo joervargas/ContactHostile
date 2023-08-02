@@ -103,7 +103,7 @@ void AWeapon::OnRep_WeaponState()
 	case EWeaponState::EWS_Equipped:
 		ShowPickupWidget(false);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		UE_LOG(LogTemp, Warning, TEXT("AreaSphere Collisions disabled"));
+		/*UE_LOG(LogTemp, Warning, TEXT("AreaSphere Collisions disabled"));*/
 		break;
 	case EWeaponState::EWS_Dropped:
 		ShowPickupWidget(true);
@@ -120,7 +120,7 @@ void AWeapon::SetWeaponState(EWeaponState State)
 	case EWeaponState::EWS_Equipped:
 		ShowPickupWidget(false);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		UE_LOG(LogTemp, Warning, TEXT("AreaSphere Collisions disabled"));
+		//UE_LOG(LogTemp, Warning, TEXT("AreaSphere Collisions disabled"));
 		break;
 	case EWeaponState::EWS_Dropped:
 		ShowPickupWidget(true);
