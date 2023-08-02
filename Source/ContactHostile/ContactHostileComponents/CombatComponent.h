@@ -34,7 +34,16 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	AWeapon* SpawnDefaultWeapon();
+	void SpawnDefaultWeapon();
+
+	UFUNCTION(Server, Reliable)
+	void ServerSpawnDefaultWeapon();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSpawnDefaultWeapon();
+
+	UFUNCTION(Client, Reliable)
+	void ClientSpawnDefaultWeapon();
 
 	void SetAiming(bool bIsAiming);
 
@@ -43,15 +52,22 @@ protected:
 
 	void FireButtonPressed(bool bPressed);
 
+	void Fire();
+
 	UFUNCTION(Server, Reliable)
 	void ServerFire(const FVector_NetQuantize& TraceHitTarget);
 	
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastFire(const FVector_NetQuantize& TraceHitTarget);
 
+	/*
+	* Line trace from camera to crosshairs
+	*/
 	void TraceUnderCrosshairs(FHitResult& TraceHitResult);
 
 	void SetHUDCrosshairSpread(float DeltaTime);
+
+	void AttachToRightHand(AActor* Item);
 
 private:
 
@@ -59,8 +75,12 @@ private:
 	ACHPlayerController* PlayerController;
 	ACHPlayerHUD* HUD;
 
+	//UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	UPROPERTY(Replicated)
 	AWeapon* EquippedWeapon;
+
+	//UFUNCTION()
+	//void OnRep_EquippedWeapon();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Weapon, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
@@ -99,8 +119,21 @@ private:
 
 	void InterpZoomFOV(float DeltaTime);
 
+	/*
+	*  Automatic Fire
+	*/
+	FTimerHandle FireTimer;
+
+	bool bCanFire = true;
+
+	void FireTimerStart();
+	void FireTimerFinished();
+
 public:	
 
+
 	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
-		
+	
+	UFUNCTION(BlueprintCallable)
+	void HideWeaponForOwner(bool bHide);
 };

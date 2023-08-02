@@ -63,6 +63,15 @@ public:
 	UPROPERTY(EditAnywhere)
 	float AimInterpSpeed = 20.f;
 
+	/*
+	* Automatic Fire
+	*/
+	UPROPERTY(EditAnywhere, Category = Combat)
+	float FireDelay = 0.15f;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	bool bFullAutomatic = true;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -87,8 +96,8 @@ protected:
 
 private:
 
-	UPROPERTY(VisibleAnywhere, Category = "Weapon Properties")
-	USceneComponent* WeaponTransform;
+	//UPROPERTY(VisibleAnywhere, Category = "Weapon Properties")
+	//USceneComponent* WeaponTransform;
 
 	UPROPERTY(VisibleAnywhere, Category = "Weapon Properties")
 	USkeletalMeshComponent* WeaponMesh;
@@ -122,4 +131,6 @@ public:
 
 	FORCEINLINE float GetAimFOV() const { return AimFOV; }
 	FORCEINLINE float GetAimInterpSpeed() const { return AimInterpSpeed; }
+
+	FORCEINLINE void SetHideLocally(bool bHide) { WeaponMesh->SetHiddenInGame(bHide); }
 };
