@@ -242,6 +242,18 @@ private:
 	UFUNCTION(BlueprintCallable)
 	void HideCharacterIfCameraClose();
 
+	/*
+	* Player Health
+	*/
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	float MaxHealth = 100.f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player Stats")
+	float Health = MaxHealth;
+
+	UFUNCTION()
+	void OnRep_Health();
+
 public:	
 
 	

@@ -72,12 +72,11 @@ void AContactHostileCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	//DOREPLIFETIME(AContactHostileCharacter, AO_Pitch);
-	//DOREPLIFETIME(AContactHostileCharacter, AO_Yaw);
 	DOREPLIFETIME(AContactHostileCharacter, bSprintButtonPressed);
 	DOREPLIFETIME(AContactHostileCharacter, bIsProne);
 	DOREPLIFETIME(AContactHostileCharacter, MeshStartingRelativeLocation);
 	DOREPLIFETIME(AContactHostileCharacter, MeshProneRelativeLocation);
+	DOREPLIFETIME(AContactHostileCharacter, Health);
 	DOREPLIFETIME_CONDITION(AContactHostileCharacter, OverlappingWeapon, COND_OwnerOnly);
 
 }
@@ -656,6 +655,10 @@ void AContactHostileCharacter::AssignSpeeds()
 	}
 }
 
+
+void AContactHostileCharacter::OnRep_Health()
+{
+}
 
 void AContactHostileCharacter::SetHorizontalVelocity()
 {
