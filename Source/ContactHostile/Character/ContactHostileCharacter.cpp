@@ -17,6 +17,8 @@
 //#include "DrawDebugHelpers.h"
 #include "ContactHostileAnimInstance.h"
 #include "ContactHostile/ContactHostile.h"
+#include "ContactHostile/PlayerController/CHPlayerController.h"
+#include "ContactHostile/GameMode/CHGameMode.h"
 
 // Sets default values
 AContactHostileCharacter::AContactHostileCharacter() :
@@ -97,6 +99,11 @@ void AContactHostileCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	CalcRelativeLocations();
+	UpdateHUDHealth();
+	if (HasAuthority())
+	{
+		OnTakeAnyDamage.AddDynamic(this, &AContactHostileCharacter::ReceiveDamage);
+	}
 }
 
 // Called every frame
@@ -598,10 +605,6 @@ void AContactHostileCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 	}
 }
 
-void AContactHostileCharacter::MulticastHit_Implementation()
-{
-	PlayHitReactMontage();
-}
 
 void AContactHostileCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
@@ -619,7 +622,6 @@ bool AContactHostileCharacter::IsWeaponEquipped()
 {
 	return (Combat && Combat->EquippedWeapon);
 }
-
 
 
 void AContactHostileCharacter::SetSpeedMode(ESpeedModes Mode)
@@ -655,9 +657,19 @@ void AContactHostileCharacter::AssignSpeeds()
 	}
 }
 
-
 void AContactHostileCharacter::OnRep_Health()
 {
+	UpdateHUDHealth();
+	PlayHitReactMontage();
+}
+
+void AContactHostileCharacter::UpdateHUDHealth()
+{
+	PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : PlayerController;
+	if (PlayerController)
+	{
+		PlayerController->SetHUDHealth(Health, MaxHealth);
+	}
 }
 
 void AContactHostileCharacter::SetHorizontalVelocity()
@@ -792,6 +804,23 @@ void AContactHostileCharacter::CalcTurnInPlace(float DeltaTime)
 	}
 }
 
+void AContactHostileCharacter::ReceiveDamage(AActor* DammagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser)
+{
+	Health = FMath::Clamp(Health - Damage, 0.0f, MaxHealth);
+	UpdateHUDHealth();
+	PlayHitReactMontage();
+
+	if (Health == 0)
+	{
+		ACHGameMode* CHGameMode = GetWorld()->GetAuthGameMode<ACHGameMode>();
+		if (CHGameMode)
+		{
+			PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : PlayerController;
+			ACHPlayerController* AttackerController = Cast<ACHPlayerController>(InstigatorController);
+			CHGameMode->PlayerEliminated(this, PlayerController, AttackerController);
+		}
+	}
+}
 
 void AContactHostileCharacter::PlayFireMontage(bool bAiming)
 {
@@ -845,6 +874,10 @@ FVector AContactHostileCharacter::GetAimLocation() const
 	
 	/*return Combat->HitResult.bBlockingHit ? Combat->HitResult.ImpactPoint : Combat->HitResult.TraceEnd;*/
 	return Combat->HitResult.TraceEnd;
+}
+
+void AContactHostileCharacter::Elim()
+{
 }
 
 //FVector AContactHostileCharacter::GetHitTarget() const

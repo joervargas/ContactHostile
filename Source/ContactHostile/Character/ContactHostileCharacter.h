@@ -93,6 +93,11 @@ protected:
 	//void SimProxiesTurn();
 	void CalcTurnInPlace(float DeltaTime);
 
+	UFUNCTION()
+	void ReceiveDamage(AActor* DammagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
+
+	void UpdateHUDHealth();
+
 private:
 
 	FVector HorizontalVelocity;
@@ -254,6 +259,8 @@ private:
 	UFUNCTION()
 	void OnRep_Health();
 
+	class ACHPlayerController* PlayerController;
+
 public:	
 
 	
@@ -293,11 +300,9 @@ public:
 	void PlayFireMontage(bool bAiming);
 	void PlayHitReactMontage();
 
-	UFUNCTION(NetMulticast, unreliable)
-	void MulticastHit();
-
 	//FVector GetHitTarget() const;
 	FHitResult GetHitResult() const;
 	FVector GetAimLocation() const;
 
+	void Elim();
 };
