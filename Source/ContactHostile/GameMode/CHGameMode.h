@@ -17,7 +17,7 @@ class CONTACTHOSTILE_API ACHGameMode : public AGameMode
 	GENERATED_BODY()
 
 public:
-
+	
 	virtual void PlayerEliminated(AContactHostileCharacter* EliminatedCharacter, ACHPlayerController* EliminatedController, ACHPlayerController* AttackerController);
 	
 };
