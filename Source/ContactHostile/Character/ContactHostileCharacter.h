@@ -203,6 +203,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* HitReactMontage; // Set in Blueprints
 
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* DeathMontage;
+
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
@@ -292,6 +295,9 @@ public:
 
 	void PlayFireMontage(bool bAiming);
 	void PlayHitReactMontage();
+	void PlayDeathMontage();
+
+	void Death();
 
 	UFUNCTION(NetMulticast, unreliable)
 	void MulticastHit();

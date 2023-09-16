@@ -800,7 +800,6 @@ void AContactHostileCharacter::PlayFireMontage(bool bAiming)
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && FireWeaponMontage)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AnimInstance->Montage_Play() "));
 		AnimInstance->Montage_Play(FireWeaponMontage);
 		FName SectionName;
 		if (bAiming) // Aiming
@@ -823,13 +822,30 @@ void AContactHostileCharacter::PlayHitReactMontage()
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && HitReactMontage)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AnimInstance->Montage_Play() "));
 		AnimInstance->Montage_Play(HitReactMontage);
 		FName SectionName;
 		SectionName = FName("HitReact_Front");
 		//SectionName = bAiming ? FName("Rifle_Ironsights") : FName("Rifle_Shoulder");
 		AnimInstance->Montage_JumpToSection(SectionName);
 	}
+}
+
+void AContactHostileCharacter::PlayDeathMontage()
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && DeathMontage)
+	{
+		AnimInstance->Montage_Play(DeathMontage);
+		//FName SectionName = FName("Default");
+		//AnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
+void AContactHostileCharacter::Death()
+{
+	PlayDeathMontage();
 }
 
 FHitResult AContactHostileCharacter::GetHitResult() const
