@@ -670,13 +670,13 @@ void AContactHostileCharacter::UpdateHUDHealth()
 
 void AContactHostileCharacter::PollInit()
 {
-	if (PlayerState == nullptr)
+	if (CHPlayerState == nullptr)
 	{
-		PlayerState = GetPlayerState<ACHPlayerState>();
-		if (PlayerState)
+		CHPlayerState = GetPlayerState<ACHPlayerState>();
+		if (CHPlayerState)
 		{
-			PlayerState->AddToScore(0.f);
-			PlayerState->AddToKilledCount(0);
+			CHPlayerState->AddToScore(0.f);
+			CHPlayerState->AddToKilledCount(0);
 		}
 	}
 }
@@ -906,6 +906,7 @@ void AContactHostileCharacter::Elim()
 	if (Combat && Combat->EquippedWeapon)
 	{
 		Combat->EquippedWeapon->Dropped();
+		SetOverlappingWeapon(nullptr);
 	}
 	MulticastElim();
 	GetWorldTimerManager().SetTimer(RespawnTimer, this, &AContactHostileCharacter::RespawnTimerFinished, RespawnDelay);
@@ -914,14 +915,11 @@ void AContactHostileCharacter::Elim()
 void AContactHostileCharacter::MulticastElim_Implementation()
 {
 	bEliminated = true;
-	/*PlayDeathMontage();*/
-	//GetMesh()->SetCollisionProfileName(FName("Ragdoll"));
+
 	GetMesh()->SetSimulatePhysics(true);
-	GetCharacterMovement()->DisableMovement();
+	if (GetCharacterMovement()) { GetCharacterMovement()->DisableMovement(); }
 	if (PlayerController) { DisableInput(PlayerController); }
-	//GetCapsuleComponent()->SetSimulatePhysics(true);
-	//GetCapsuleComponent()->AddImpulse(DamageHitResult.TraceEnd);
-	//GetMesh()->AddImpulse((-DamageHitResult.ImpactNormal) * DamageImpulseScaler);
+
 	FVector DamageVector = DamageHitRotation.Vector();
 	GetMesh()->AddImpulse((-DamageVector.GetSafeNormal()) * DamageImpulseScaler);
 }

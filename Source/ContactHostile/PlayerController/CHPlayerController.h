@@ -20,7 +20,8 @@ protected:
 
 private:
 
-	class ACHPlayerHUD* PlayerHUD = nullptr;
+	UPROPERTY()
+	class ACHPlayerHUD* PlayerHUD;
 
 public:
 

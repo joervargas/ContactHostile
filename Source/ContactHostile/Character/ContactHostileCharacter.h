@@ -271,7 +271,8 @@ private:
 
 	bool bEliminated = false;
 
-	class ACHPlayerController* PlayerController = nullptr;
+	UPROPERTY()
+	class ACHPlayerController* PlayerController;
 
 	FTimerHandle RespawnTimer;
 
@@ -280,7 +281,8 @@ private:
 
 	void RespawnTimerFinished();
 
-	class ACHPlayerState* PlayerState = nullptr;
+	UPROPERTY()
+	class ACHPlayerState* CHPlayerState;
 
 public:
 

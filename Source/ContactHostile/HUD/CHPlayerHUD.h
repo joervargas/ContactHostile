@@ -38,6 +38,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
 	TSubclassOf<class UUserWidget> PlayerOverlayClass; // Blueprint UPlayerOverlay class
 
+	UPROPERTY()
 	class UPlayerOverlay* PlayerOverlay;
 
 protected:
@@ -48,7 +49,7 @@ protected:
 private:
 
 	UPROPERTY(EditAnywhere)
-		float CrosshairSpreadMax = 16.f;
+	float CrosshairSpreadMax = 16.f;
 
 	FHUDPackage HUDPackage;
 

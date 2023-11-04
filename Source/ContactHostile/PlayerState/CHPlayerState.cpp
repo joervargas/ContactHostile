@@ -11,7 +11,7 @@ void ACHPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ACHPlayerState, KilledCount);
+	DOREPLIFETIME_CONDITION(ACHPlayerState, KilledCount, COND_OwnerOnly);
 }
 
 void ACHPlayerState::AddToScore(float Amount)
@@ -21,7 +21,7 @@ void ACHPlayerState::AddToScore(float Amount)
 	Character = Character == nullptr ? Cast<AContactHostileCharacter>(GetPawn()) : Character;
 	if (Character)
 	{
-		PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
+		PlayerController = (PlayerController == nullptr) ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
 		if (PlayerController)
 		{
 			PlayerController->SetHUDScore(GetScore());
@@ -33,10 +33,10 @@ void ACHPlayerState::OnRep_Score()
 {
 	Super::OnRep_Score();
 
-	Character = Character == nullptr ? Cast<AContactHostileCharacter>(GetPawn()) : Character;
+	Character = (Character == nullptr) ? Cast<AContactHostileCharacter>(GetPawn()) : Character;
 	if (Character)
 	{
-		PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
+		PlayerController = (PlayerController == nullptr) ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
 		if (PlayerController)
 		{
 			PlayerController->SetHUDScore(GetScore());
@@ -51,7 +51,7 @@ void ACHPlayerState::AddToKilledCount(int32 Amount)
 	Character = Character == nullptr ? Cast<AContactHostileCharacter>(GetPawn()) : Character;
 	if (Character)
 	{
-		PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
+		PlayerController = (PlayerController == nullptr) ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
 		if (PlayerController)
 		{
 			PlayerController->SetHUDKilled(KilledCount);
@@ -64,7 +64,7 @@ void ACHPlayerState::OnRep_KilledCount()
 	Character = Character == nullptr ? Cast<AContactHostileCharacter>(GetPawn()) : Character;
 	if (Character)
 	{
-		PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
+		PlayerController = (PlayerController == nullptr) ? Cast<ACHPlayerController>(Character->Controller) : PlayerController;
 		if (PlayerController)
 		{
 			PlayerController->SetHUDKilled(KilledCount);
