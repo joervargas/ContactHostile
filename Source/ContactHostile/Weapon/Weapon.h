@@ -36,23 +36,24 @@ public:
 
 	virtual void Fire(const FVector& HitTarget);
 
+	void Dropped();
 	/**
 	* Textures for the weapon crosshairs
 	*/
 	UPROPERTY(EditAnywhere, Category = Crosshairs)
-		class UTexture2D* CrosshairsCenter;
+	class UTexture2D* CrosshairsCenter;
 
 	UPROPERTY(EditAnywhere, Category = Crosshairs)
-		UTexture2D* CrosshairsLeft;
+	UTexture2D* CrosshairsLeft;
 
 	UPROPERTY(EditAnywhere, Category = Crosshairs)
-		UTexture2D* CrosshairsRight;
+	UTexture2D* CrosshairsRight;
 
 	UPROPERTY(EditAnywhere, Category = Crosshairs)
-		UTexture2D* CrosshairsTop;
+	UTexture2D* CrosshairsTop;
 
 	UPROPERTY(EditAnywhere, Category = Crosshairs)
-		UTexture2D* CrosshairsBottom;
+	UTexture2D* CrosshairsBottom;
 
 	/**
 	*	Aim Zooming

@@ -34,6 +34,9 @@ protected:
 
 	virtual void BeginPlay() override;
 
+	UFUNCTION()
+	void OnRep_EquippedWeapon();
+
 	void SpawnDefaultWeapon();
 
 	UFUNCTION(Server, Reliable)
@@ -71,16 +74,13 @@ protected:
 
 private:
 
-	AContactHostileCharacter* CHCharacter;
-	ACHPlayerController* PlayerController;
-	ACHPlayerHUD* HUD;
+	AContactHostileCharacter* CHCharacter = nullptr;
+	ACHPlayerController* PlayerController = nullptr;
+	ACHPlayerHUD* HUD = nullptr;
 
-	//UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
-	UPROPERTY(Replicated)
+	//UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	AWeapon* EquippedWeapon;
-
-	//UFUNCTION()
-	//void OnRep_EquippedWeapon();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Weapon, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;

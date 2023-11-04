@@ -5,10 +5,11 @@
 #include "ContactHostileCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+//#include "KismetAnimationLibrary.h"
 #include "ContactHostile/ContactHostileComponents/CombatComponent.h"
 #include "ContactHostile/Weapon/Weapon.h"
 #include "Engine/SkeletalMeshSocket.h"
-//#include "Engine/KismetAnimationLibrary.h"
+//#include "KismetAnimationLibrary.h"
 
 
 void UContactHostileAnimInstance::NativeInitializeAnimation()
@@ -32,9 +33,11 @@ void UContactHostileAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	//Velocity.Z = 0.f;
 	Speed = CHCharacter->GetSpeed();
 	
+	//float DAxis = UKismetAnimationLibrary::CalculateDirection(CHCharacter->GetHorizontalVelocity(), CHCharacter->GetActorRotation());
+	//DeltaDirectionAxis = FMath::FInterpTo(DeltaDirectionAxis, DAxis, DeltaTime, 6.f);
+	//DirectionAxis = DeltaDirectionAxis;
+	//DirectionAxis = UKismetAnimationLibrary::CalculateDirection(CHCharacter->GetHorizontalVelocity(), CHCharacter->GetActorRotation());
 	DirectionAxis = CalculateDirection(CHCharacter->GetHorizontalVelocity(), CHCharacter->GetActorRotation());
-
-	//ForwardMovement = CalcForwardMovement(Velocity);
 
 	bIsInAir = CHCharacter->GetCharacterMovement()->IsFalling();
 
@@ -49,6 +52,8 @@ void UContactHostileAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bWeaponEquipped = CHCharacter->IsWeaponEquipped();
 
 	bAiming = CHCharacter->AimReady();
+
+	bEliminated = CHCharacter->IsEliminated();
 
 	AO_Yaw = CHCharacter->GetAO_Yaw();
 	AO_Pitch = CHCharacter->GetAO_Pitch();
@@ -87,9 +92,5 @@ void UContactHostileAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		LeftHandTransform.SetLocation(OutPostion);
 		LeftHandTransform.SetRotation(FQuat(OutRotation));
 
-		//FTransform MuzzleTipTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"), ERelativeTransformSpace::RTS_World);
-		//FVector MuzzleOut(FRotationMatrix(MuzzleTipTransform.GetRotation().Rotator()).GetUnitAxis(EAxis::X));
-		//DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), MuzzleTipTransform.GetLocation() + MuzzleOut * 1000.f, FColor::Red);
-		//DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), CHCharacter->GetAimLocation(), FColor::Orange);
 	}
 }

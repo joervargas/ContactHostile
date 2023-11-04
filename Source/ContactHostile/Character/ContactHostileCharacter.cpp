@@ -19,6 +19,9 @@
 #include "ContactHostile/ContactHostile.h"
 #include "ContactHostile/PlayerController/CHPlayerController.h"
 #include "ContactHostile/GameMode/CHGameMode.h"
+#include "TimerManager.h"
+#include "ContactHostile/PlayerState/CHPlayerState.h"
+
 
 // Sets default values
 AContactHostileCharacter::AContactHostileCharacter() :
@@ -38,6 +41,8 @@ AContactHostileCharacter::AContactHostileCharacter() :
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
+
+	SpawnCollisionHandlingMethod = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetMesh());
@@ -114,20 +119,11 @@ void AContactHostileCharacter::Tick(float DeltaTime)
 	SetHorizontalVelocity();
 	SetSpeed();
 	AssignSpeeds();
-	//if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled())
-	//{
-		CalcAimOffset(DeltaTime);
-	//} else {
-	//	ProxyTimeSinceLastMovementReplication += DeltaTime;
-	//	if (ProxyTimeSinceLastMovementReplication > 0.25f)
-	//	{
-	//		OnRep_ReplicatedMovement();
-	//	}
-	//	CalcAO_Pitch();
-	//}
+	CalcAimOffset(DeltaTime);
 	CanProne();
 	InterpProneRelativeLocations();
 	HideCharacterIfCameraClose();
+	PollInit();
 }
 
 // Called to bind functionality to input
@@ -672,6 +668,19 @@ void AContactHostileCharacter::UpdateHUDHealth()
 	}
 }
 
+void AContactHostileCharacter::PollInit()
+{
+	if (PlayerState == nullptr)
+	{
+		PlayerState = GetPlayerState<ACHPlayerState>();
+		if (PlayerState)
+		{
+			PlayerState->AddToScore(0.f);
+			PlayerState->AddToKilledCount(0);
+		}
+	}
+}
+
 void AContactHostileCharacter::SetHorizontalVelocity()
 {
 	HorizontalVelocity = GetVelocity();
@@ -804,11 +813,18 @@ void AContactHostileCharacter::CalcTurnInPlace(float DeltaTime)
 	}
 }
 
-void AContactHostileCharacter::ReceiveDamage(AActor* DammagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser)
+void AContactHostileCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser)
 {
 	Health = FMath::Clamp(Health - Damage, 0.0f, MaxHealth);
 	UpdateHUDHealth();
 	PlayHitReactMontage();
+
+	FRotator DamagePlayerLookAt = UKismetMathLibrary::FindLookAtRotation(DamagedActor->GetActorLocation(), DamageCauser->GetActorLocation());
+	DamageHitRotation = DamagePlayerLookAt - GetControlRotation();
+	UE_LOG(LogTemp, Warning, TEXT("HitRotation: %s"), *DamageHitRotation.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("DamageHitResult: %s"), *DamageHitResult.ImpactPoint.Rotation().ToString());
+	//HitRotation.Vector();
+	DamageImpulseScaler = Damage * 1000;
 
 	if (Health == 0)
 	{
@@ -848,15 +864,28 @@ void AContactHostileCharacter::PlayHitReactMontage()
 {
 	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && HitReactMontage)
+	FName SectionName;
+	if (DamageHitRotation.Yaw < 20.f && DamageHitRotation.Yaw > -20.f)
 	{
-		AnimInstance->Montage_Play(HitReactMontage);
-		FName SectionName;
 		SectionName = FName("HitReact_Front");
-		//SectionName = bAiming ? FName("Rifle_Ironsights") : FName("Rifle_Shoulder");
-		AnimInstance->Montage_JumpToSection(SectionName);
+	} 
+	else if (DamageHitRotation.Yaw < 120.f || DamageHitRotation.Yaw < -120.f)
+	{
+		SectionName = FName("HitReact_Back");
 	}
+	else if (DamageHitRotation.Yaw < -20.f && DamageHitRotation.Yaw > -120.f)
+	{
+		SectionName = FName("HitReact_Left");
+	}
+	else if (DamageHitRotation.Yaw < 120.f && DamageHitRotation.Yaw > 20.f)
+	{
+		SectionName = FName("HitReact_Right");
+	} else {
+		SectionName = FName("HitReact_Front");
+	}
+	//UE_LOG()
+	PlayAnimMontage(HitReactMontage, 1.0f, SectionName);
+
 }
 
 void AContactHostileCharacter::PlayDeathMontage()
@@ -872,12 +901,39 @@ void AContactHostileCharacter::PlayDeathMontage()
 	}
 }
 
-void AContactHostileCharacter::Death()
+void AContactHostileCharacter::Elim()
 {
-	PlayDeathMontage();
+	if (Combat && Combat->EquippedWeapon)
+	{
+		Combat->EquippedWeapon->Dropped();
+	}
+	MulticastElim();
+	GetWorldTimerManager().SetTimer(RespawnTimer, this, &AContactHostileCharacter::RespawnTimerFinished, RespawnDelay);
 }
 
-FHitResult AContactHostileCharacter::GetHitResult() const
+void AContactHostileCharacter::MulticastElim_Implementation()
+{
+	bEliminated = true;
+	/*PlayDeathMontage();*/
+	//GetMesh()->SetCollisionProfileName(FName("Ragdoll"));
+	GetMesh()->SetSimulatePhysics(true);
+	GetCharacterMovement()->DisableMovement();
+	if (PlayerController) { DisableInput(PlayerController); }
+	//GetCapsuleComponent()->SetSimulatePhysics(true);
+	//GetCapsuleComponent()->AddImpulse(DamageHitResult.TraceEnd);
+	//GetMesh()->AddImpulse((-DamageHitResult.ImpactNormal) * DamageImpulseScaler);
+	FVector DamageVector = DamageHitRotation.Vector();
+	GetMesh()->AddImpulse((-DamageVector.GetSafeNormal()) * DamageImpulseScaler);
+}
+
+
+void AContactHostileCharacter::RespawnTimerFinished()
+{
+	ACHGameMode* CHGameMode = GetWorld()->GetAuthGameMode<ACHGameMode>();
+	CHGameMode->RequestRespawn(this, PlayerController);
+}
+
+FHitResult AContactHostileCharacter::GetFireHitResult() const
 {
 	if (Combat == nullptr) { return FHitResult(); }
 
@@ -890,10 +946,6 @@ FVector AContactHostileCharacter::GetAimLocation() const
 	
 	/*return Combat->HitResult.bBlockingHit ? Combat->HitResult.ImpactPoint : Combat->HitResult.TraceEnd;*/
 	return Combat->HitResult.TraceEnd;
-}
-
-void AContactHostileCharacter::Elim()
-{
 }
 
 //FVector AContactHostileCharacter::GetHitTarget() const

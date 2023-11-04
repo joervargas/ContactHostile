@@ -38,7 +38,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual void PostInitializeComponents() override;
-	
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -52,16 +52,16 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	 /**
-		 @brief MoveForward Moves character forwards or backwards depending on Value (+ or -).
-		 @param Value - Value to move the character by.
-	 **/
+	/**
+		@brief MoveForward Moves character forwards or backwards depending on Value (+ or -).
+		@param Value - Value to move the character by.
+	**/
 	void MoveForward(float Value);
 
-	 /**
-		 @brief MoveRight Moves the character right or left depending on Value (+ or -).
-		 @param Value - Value to move the character by.
-	 **/
+	/**
+		@brief MoveRight Moves the character right or left depending on Value (+ or -).
+		@param Value - Value to move the character by.
+	**/
 	void MoveRight(float Value);
 
 	virtual void AddControllerPitchInput(float Value) override;
@@ -86,7 +86,7 @@ protected:
 	void CalcAimOffset(float DeltaTime);
 
 	void CalcAO_Pitch();
-	
+
 	/*
 	* Handle TurnInPlace for Clients(SimulatedProxies)
 	*/
@@ -94,9 +94,12 @@ protected:
 	void CalcTurnInPlace(float DeltaTime);
 
 	UFUNCTION()
-	void ReceiveDamage(AActor* DammagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
+	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
 
 	void UpdateHUDHealth();
+
+	// Poll for any relevant classes for initialization
+	void PollInit();
 
 private:
 
@@ -208,6 +211,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* HitReactMontage; // Set in Blueprints
 
+	FRotator DamageHitRotation;
+	FHitResult DamageHitResult;
+	float DamageImpulseScaler;
+
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* DeathMontage;
 
@@ -262,11 +269,22 @@ private:
 	UFUNCTION()
 	void OnRep_Health();
 
-	class ACHPlayerController* PlayerController;
+	bool bEliminated = false;
 
-public:	
+	class ACHPlayerController* PlayerController = nullptr;
 
-	
+	FTimerHandle RespawnTimer;
+
+	UPROPERTY(EditDefaultsOnly)
+	float RespawnDelay = 3.f;
+
+	void RespawnTimerFinished();
+
+	class ACHPlayerState* PlayerState = nullptr;
+
+public:
+
+
 	FORCEINLINE FVector GetHorizontalVelocity() const { return HorizontalVelocity; }
 	void SetHorizontalVelocity();
 
@@ -288,6 +306,15 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	FORCEINLINE bool IsEliminated() const { return bEliminated; }
+
+	FORCEINLINE const FHitResult* GetDamageHitResult() const { return &DamageHitResult; }
+	FORCEINLINE void SetDamageHitResult(FHitResult Hit) { DamageHitResult = Hit; }
+	FORCEINLINE const float GetDamageImpulseScaler() const { return DamageImpulseScaler; }
+	FORCEINLINE void SetDamageImpulseScaler(float DamageScale) { DamageImpulseScaler = DamageScale;  }
+	
+	FORCEINLINE float GetHealth() const { return Health; }
+	FORCEINLINE float GetMaxHealt() const { return MaxHealth; }
 
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -304,11 +331,16 @@ public:
 	void PlayHitReactMontage();
 	void PlayDeathMontage();
 
-	void Death();
+	/*
+	  Called on the game mode (Only called on server).
+	*/
+	void Elim();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastElim();
 
 	//FVector GetHitTarget() const;
-	FHitResult GetHitResult() const;
+	FHitResult GetFireHitResult() const;
 	FVector GetAimLocation() const;
 
-	void Elim();
 };

@@ -20,10 +20,14 @@ protected:
 
 private:
 
-	class ACHPlayerHUD* PlayerHUD;
+	class ACHPlayerHUD* PlayerHUD = nullptr;
 
 public:
 
+	virtual void OnPossess(APawn* InPawn) override;
+
 	void SetHUDHealth(float Health, float MaxHealth);
 
+	void SetHUDScore(float Score);
+	void SetHUDKilled(int32 KilledCount);
 };
