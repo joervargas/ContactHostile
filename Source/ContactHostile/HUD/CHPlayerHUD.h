@@ -35,6 +35,16 @@ public:
 	// Called every frame
 	virtual void DrawHUD() override;
 
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	TSubclassOf<class UUserWidget> PlayerOverlayClass; // Blueprint UPlayerOverlay class
+
+	class UPlayerOverlay* PlayerOverlay;
+
+protected:
+
+	virtual void BeginPlay() override;
+	void AddCharacterOverlay();
+
 private:
 
 	UPROPERTY(EditAnywhere)

@@ -40,7 +40,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	class UParticleSystem* Tracer;
 
-	class UParticleSystemComponent* TracerComponent;
+	class UParticleSystemComponent* TracerComponent = nullptr;
 
 	UPROPERTY(EditAnywhere)
 	UParticleSystem* ImpactParticles;
@@ -48,6 +48,12 @@ private:
 	UPROPERTY(EditAnywhere)
 	class USoundCue* ImpactSound;
 
-public:	
+public:
+	
+
+protected:
+
+	UPROPERTY(EditAnywhere)
+	float Damage = 20.f;
 
 };

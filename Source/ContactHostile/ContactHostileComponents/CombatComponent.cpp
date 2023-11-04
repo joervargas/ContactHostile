@@ -52,6 +52,8 @@ void UCombatComponent::BeginPlay()
 	}
 }
 
+
+
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -238,6 +240,19 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 		HUDPackage.CrosshairsColor = FLinearColor::White;
 	}
 	HUD->SetHUDPackage(HUDPackage);
+}
+
+void UCombatComponent::OnRep_EquippedWeapon()
+{
+	if (EquippedWeapon && CHCharacter)
+	{
+		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+		const USkeletalMeshSocket* HandSocket = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+		if (HandSocket)
+		{
+			HandSocket->AttachActor(EquippedWeapon, CHCharacter->GetMesh());
+		}
+	}
 }
 
 void UCombatComponent::SpawnDefaultWeapon()
