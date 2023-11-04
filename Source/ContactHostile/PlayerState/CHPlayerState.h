@@ -32,8 +32,11 @@ public:
 
 private:
 
-	AContactHostileCharacter* Character = nullptr;
-	ACHPlayerController* PlayerController = nullptr;
+	UPROPERTY()
+	AContactHostileCharacter* Character;
+	
+	UPROPERTY()
+	ACHPlayerController* PlayerController;
 
 	UPROPERTY(ReplicatedUsing = OnRep_KilledCount)
 	int32 KilledCount;

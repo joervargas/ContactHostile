@@ -74,8 +74,13 @@ protected:
 
 private:
 
+	UPROPERTY()
 	AContactHostileCharacter* CHCharacter = nullptr;
+	
+	UPROPERTY()
 	ACHPlayerController* PlayerController = nullptr;
+	
+	UPROPERTY()
 	ACHPlayerHUD* HUD = nullptr;
 
 	//UPROPERTY(Replicated)
