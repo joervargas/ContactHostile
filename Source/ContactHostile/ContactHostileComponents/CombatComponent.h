@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "ContactHostile/Weapon/WeaponTypes.h"
+#include "ContactHostile/CHTypes/CombatState.h"
 #include "CombatComponent.generated.h"
 
 class AWeapon;
@@ -29,6 +31,10 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	void EquipWeapon(AWeapon* WeaponToEquip);
+	void Reload();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
 
 protected:
 
@@ -38,15 +44,6 @@ protected:
 	void OnRep_EquippedWeapon();
 
 	void SpawnDefaultWeapon();
-
-	UFUNCTION(Server, Reliable)
-	void ServerSpawnDefaultWeapon();
-
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastSpawnDefaultWeapon();
-
-	UFUNCTION(Client, Reliable)
-	void ClientSpawnDefaultWeapon();
 
 	void SetAiming(bool bIsAiming);
 
@@ -70,24 +67,35 @@ protected:
 
 	void SetHUDCrosshairSpread(float DeltaTime);
 
+	void SetHUDCrosshairs();
+
+	void DropEquippedWeapon();
+
 	void AttachToRightHand(AActor* Item);
+
+	UFUNCTION(Server, Reliable)
+	void ServerReload();
+
+	void HandleReload();
+
+	int32 AmountToReload();
 
 private:
 
 	UPROPERTY()
-	AContactHostileCharacter* CHCharacter = nullptr;
+	AContactHostileCharacter* CHCharacter;
 	
 	UPROPERTY()
-	ACHPlayerController* PlayerController = nullptr;
+	ACHPlayerController* PlayerController;
 	
 	UPROPERTY()
-	ACHPlayerHUD* HUD = nullptr;
+	ACHPlayerHUD* HUD;
 
 	//UPROPERTY(Replicated)
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	AWeapon* EquippedWeapon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Weapon, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Category = Weapon, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
 	// Might not want to replicate this for performance reasons; Animation change barely noticeable.
@@ -133,6 +141,30 @@ private:
 
 	void FireTimerStart();
 	void FireTimerFinished();
+
+	bool CanFire();
+
+	// Carried Ammo for the currently equipped weapon
+	UPROPERTY(ReplicatedUsing = OnRep_CarriedAmmo)
+	int32 CarriedAmmo;
+
+	UFUNCTION()
+	void OnRep_CarriedAmmo();
+
+	TMap<EWeaponType, int32> CarriedAmmoMap;
+
+	UPROPERTY(EditAnywhere)
+	int32 StartingARAmmo = 30;
+
+	void InitializeCarriedAmmo();
+
+	UPROPERTY(ReplicatedUsing = OnRep_CombatState)
+	ECombatState CombatState = ECombatState::ECS_Unoccupied;
+
+	UFUNCTION()
+	void OnRep_CombatState();
+
+	void UpdateAmmoValues();
 
 public:	
 

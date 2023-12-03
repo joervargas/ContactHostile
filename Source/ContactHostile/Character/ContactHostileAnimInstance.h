@@ -106,4 +106,7 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = Health, meta = (AllowPrivateAccess = "true"))
 	bool bEliminated;
+
+	UPROPERTY(BlueprintReadOnly, Category = Health, meta = (AllowPrivateAccess = "true"))
+	bool bUseFABRIK;
 };

@@ -5,6 +5,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "ContactHostile/Character/ContactHostileCharacter.h"
+#include "ContactHostile/PlayerController/CHPlayerController.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Animation/AnimationAsset.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -45,6 +46,20 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AWeapon, WeaponState);
+	DOREPLIFETIME(AWeapon, Ammo);
+}
+
+void AWeapon::OnRep_Owner()
+{
+	Super::OnRep_Owner();
+
+	if (Owner == nullptr)
+	{
+		CHOwnerCharacter = nullptr;
+		CHOwnerController = nullptr;
+	} else {
+		SetHUDAmmo();
+	}
 }
 
 // Called when the game starts or when spawned
@@ -101,7 +116,7 @@ void AWeapon::OnRep_WeaponState()
 	switch (WeaponState)
 	{
 	case EWeaponState::EWS_Equipped:
-		ShowPickupWidget(false);
+		//ShowPickupWidget(false);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		WeaponMesh->SetSimulatePhysics(false);
 		WeaponMesh->SetEnableGravity(false);
@@ -116,13 +131,34 @@ void AWeapon::OnRep_WeaponState()
 	}
 }
 
+void AWeapon::SetHUDAmmo()
+{
+	CHOwnerCharacter = CHOwnerCharacter == nullptr ? Cast<AContactHostileCharacter>(GetOwner()) : CHOwnerCharacter;
+	if (CHOwnerCharacter)
+	{
+		CHOwnerController = CHOwnerController == nullptr ? Cast<ACHPlayerController>(CHOwnerCharacter->Controller) : CHOwnerController;
+		if (CHOwnerController) { CHOwnerController->SetHUDWeaponAmmo(Ammo); }
+	}
+}
+
+void AWeapon::OnRep_Ammo()
+{
+	SetHUDAmmo();
+}
+
+void AWeapon::SpendRound()
+{
+	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+	SetHUDAmmo();
+}
+
 void AWeapon::SetWeaponState(EWeaponState State)
 {
 	WeaponState = State;
 	switch (WeaponState)
 	{
 	case EWeaponState::EWS_Equipped:
-		ShowPickupWidget(false);
+		//ShowPickupWidget(false);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		WeaponMesh->SetSimulatePhysics(false);
 		WeaponMesh->SetEnableGravity(false);
@@ -171,6 +207,7 @@ void AWeapon::Fire(const FVector& HitTarget)
 			}
 		}
 	}
+	SpendRound();
 }
 
 void AWeapon::Dropped()
@@ -179,5 +216,17 @@ void AWeapon::Dropped()
 	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, true);
 	WeaponMesh->DetachFromComponent(DetachRules);
 	SetOwner(nullptr);
+	CHOwnerCharacter = nullptr;
+	CHOwnerController = nullptr;
 }
 
+void AWeapon::AddAmmo(int32 Amount)
+{
+	Ammo = FMath::Clamp(Ammo + Amount, 0, MagCapacity);
+	SetHUDAmmo();
+}
+
+bool AWeapon::IsEmpty()
+{
+	return Ammo <= 0;
+}

@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "ContactHostile/CHTypes/TurningInPlace.h"
 #include "ContactHostile/CHTypes/InteractWithCrosshairsInterface.h"
+#include "ContactHostile/CHTypes/CombatState.h"
 #include "ContactHostileCharacter.generated.h"
 
 
@@ -72,6 +73,7 @@ protected:
 	void SprintButtonReleased();
 
 	void EquipButtonPressed();
+	void ReloadButtonPressed();
 
 	void CrouchProneButtonPressed();
 	void CrouchProneButtonRepeat();
@@ -209,6 +211,9 @@ private:
 	UAnimMontage* FireWeaponMontage; // Set in Blueprints
 
 	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* ReloadMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* HitReactMontage; // Set in Blueprints
 
 	FRotator DamageHitRotation;
@@ -221,7 +226,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
 
 	UFUNCTION(Server, Reliable)
@@ -272,7 +277,7 @@ private:
 	bool bEliminated = false;
 
 	UPROPERTY()
-	class ACHPlayerController* PlayerController;
+	class ACHPlayerController* CHPlayerController;
 
 	FTimerHandle RespawnTimer;
 
@@ -330,6 +335,7 @@ public:
 	void AssignSpeeds();
 
 	void PlayFireMontage(bool bAiming);
+	void PlayReloadMontage();
 	void PlayHitReactMontage();
 	void PlayDeathMontage();
 
@@ -345,4 +351,5 @@ public:
 	FHitResult GetFireHitResult() const;
 	FVector GetAimLocation() const;
 
+	ECombatState GetCombatState() const;
 };

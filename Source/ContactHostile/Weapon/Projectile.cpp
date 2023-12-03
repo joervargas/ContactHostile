@@ -66,6 +66,7 @@ void AProjectile::Tick(float DeltaTime)
 void AProjectile::Destroyed()
 {
 	Super::Destroyed();
+	//ServerPlayImpact();
 	if (ImpactParticles)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
@@ -78,7 +79,37 @@ void AProjectile::Destroyed()
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
+	//MulticastPlayImpact();
 	Destroy();
+}
+
+void AProjectile::ServerPlayImpact_Implementation()
+{
+	if (HasAuthority())
+	{
+		if (ImpactParticles)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+		}
+		if (ImpactSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+		}
+	} else {
+		MulticastPlayImpact();
+	}
+}
+
+void AProjectile::MulticastPlayImpact_Implementation()
+{
+	if (ImpactParticles)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+	}
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
 }
 
 

@@ -44,9 +44,9 @@ void ACasing::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitive
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, ShellSound, GetActorLocation());
 	}
-	//Destroy();
 	// Deactivate collisions to prevent further sounds
 	CasingMesh->SetNotifyRigidBodyCollision(false);
+	//Destroy();
 }
 
 

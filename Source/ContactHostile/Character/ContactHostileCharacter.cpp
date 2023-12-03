@@ -21,6 +21,7 @@
 #include "ContactHostile/GameMode/CHGameMode.h"
 #include "TimerManager.h"
 #include "ContactHostile/PlayerState/CHPlayerState.h"
+#include "ContactHostile/Weapon/WeaponTypes.h"
 
 
 // Sets default values
@@ -137,14 +138,20 @@ void AContactHostileCharacter::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAxis(TEXT("Lookup"), this, &AContactHostileCharacter::AddControllerPitchInput);
 
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &AContactHostileCharacter::Jump);
+
 	PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Pressed, this, &AContactHostileCharacter::SprintButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Sprint"), IE_Released, this, &AContactHostileCharacter::SprintButtonReleased);
+
 	PlayerInputComponent->BindAction(TEXT("Equip"), IE_Pressed, this, &AContactHostileCharacter::EquipButtonPressed);
+	PlayerInputComponent->BindAction(TEXT("Reload"), IE_Pressed, this, &AContactHostileCharacter::ReloadButtonPressed);
+
 	PlayerInputComponent->BindAction(TEXT("Crouch/Prone"), IE_Pressed, this, &AContactHostileCharacter::CrouchProneButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Crouch/Prone"), IE_Repeat, this, &AContactHostileCharacter::CrouchProneButtonRepeat);
 	PlayerInputComponent->BindAction(TEXT("Crouch/Prone"), IE_Released, this, &AContactHostileCharacter::CrouchProneButtonReleased);
+
 	PlayerInputComponent->BindAction(TEXT("Aim"), IE_Pressed, this, &AContactHostileCharacter::AimButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Aim"), IE_Released, this, &AContactHostileCharacter::AimButtonReleased);
+
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Pressed, this, &AContactHostileCharacter::FireButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Released, this, &AContactHostileCharacter::FireButtonReleased);
 }
@@ -330,7 +337,7 @@ void AContactHostileCharacter::EquipButtonPressed()
 {
 	if (HasAuthority())
 	{
-		if (Combat)
+		if (Combat && OverlappingWeapon && OverlappingWeapon->GetWeaponState() != EWeaponState::EWS_Equipped)
 		{
 			Combat->EquipWeapon(OverlappingWeapon);
 		}
@@ -341,9 +348,17 @@ void AContactHostileCharacter::EquipButtonPressed()
 	}
 }
 
-void AContactHostileCharacter::ServerEquipButtonPressed_Implementation()
+void AContactHostileCharacter::ReloadButtonPressed()
 {
 	if (Combat)
+	{
+		Combat->Reload();
+	}
+}
+
+void AContactHostileCharacter::ServerEquipButtonPressed_Implementation()
+{
+	if (Combat && OverlappingWeapon && OverlappingWeapon->GetWeaponState() != EWeaponState::EWS_Equipped)
 	{
 		Combat->EquipWeapon(OverlappingWeapon);
 	}
@@ -594,7 +609,7 @@ void AContactHostileCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 	OverlappingWeapon = Weapon;
 	if (IsLocallyControlled())
 	{
-		if (OverlappingWeapon)
+		if (OverlappingWeapon && !bEliminated)
 		{
 			OverlappingWeapon->ShowPickupWidget(true);
 		}
@@ -661,10 +676,10 @@ void AContactHostileCharacter::OnRep_Health()
 
 void AContactHostileCharacter::UpdateHUDHealth()
 {
-	PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : PlayerController;
-	if (PlayerController)
+	CHPlayerController = CHPlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : CHPlayerController;
+	if (CHPlayerController)
 	{
-		PlayerController->SetHUDHealth(Health, MaxHealth);
+		CHPlayerController->SetHUDHealth(Health, MaxHealth);
 	}
 }
 
@@ -831,9 +846,9 @@ void AContactHostileCharacter::ReceiveDamage(AActor* DamagedActor, float Damage,
 		ACHGameMode* CHGameMode = GetWorld()->GetAuthGameMode<ACHGameMode>();
 		if (CHGameMode)
 		{
-			PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : PlayerController;
+			CHPlayerController = CHPlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : CHPlayerController;
 			ACHPlayerController* AttackerController = Cast<ACHPlayerController>(InstigatorController);
-			CHGameMode->PlayerEliminated(this, PlayerController, AttackerController);
+			CHGameMode->PlayerEliminated(this, CHPlayerController, AttackerController);
 		}
 	}
 }
@@ -860,32 +875,56 @@ void AContactHostileCharacter::PlayFireMontage(bool bAiming)
 	}
 }
 
+void AContactHostileCharacter::PlayReloadMontage()
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && ReloadMontage)
+	{
+		AnimInstance->Montage_Play(ReloadMontage);
+		FName SectionName;
+		switch (Combat->EquippedWeapon->GetWeaponType())
+		{
+		case EWeaponType::EWT_AssaultRifle:
+			SectionName = FName("Rifle");
+			break;
+		}
+		AnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
 void AContactHostileCharacter::PlayHitReactMontage()
 {
 	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
 
-	FName SectionName;
-	if (DamageHitRotation.Yaw < 20.f && DamageHitRotation.Yaw > -20.f)
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HitReactMontage)
 	{
-		SectionName = FName("HitReact_Front");
-	} 
-	else if (DamageHitRotation.Yaw < 120.f || DamageHitRotation.Yaw < -120.f)
-	{
-		SectionName = FName("HitReact_Back");
-	}
-	else if (DamageHitRotation.Yaw < -20.f && DamageHitRotation.Yaw > -120.f)
-	{
-		SectionName = FName("HitReact_Left");
-	}
-	else if (DamageHitRotation.Yaw < 120.f && DamageHitRotation.Yaw > 20.f)
-	{
-		SectionName = FName("HitReact_Right");
-	} else {
-		SectionName = FName("HitReact_Front");
+		AnimInstance->Montage_Play(HitReactMontage);
+		FName SectionName;
+		if (DamageHitRotation.Yaw < 20.f && DamageHitRotation.Yaw > -20.f)
+		{
+			SectionName = FName("HitReact_Front");
+		} 
+		else if (DamageHitRotation.Yaw < 120.f || DamageHitRotation.Yaw < -120.f)
+		{
+			SectionName = FName("HitReact_Back");
+		}
+		else if (DamageHitRotation.Yaw < -20.f && DamageHitRotation.Yaw > -120.f)
+		{
+			SectionName = FName("HitReact_Left");
+		}
+		else if (DamageHitRotation.Yaw < 120.f && DamageHitRotation.Yaw > 20.f)
+		{
+			SectionName = FName("HitReact_Right");
+		} else {
+			SectionName = FName("HitReact_Front");
+		}
+		AnimInstance->Montage_JumpToSection(SectionName);
 	}
 	//UE_LOG()
-	PlayAnimMontage(HitReactMontage, 1.0f, SectionName);
-
+	//PlayAnimMontage(HitReactMontage, 1.0f, SectionName);
 }
 
 void AContactHostileCharacter::PlayDeathMontage()
@@ -914,11 +953,12 @@ void AContactHostileCharacter::Elim()
 
 void AContactHostileCharacter::MulticastElim_Implementation()
 {
+	if (CHPlayerController) { CHPlayerController->SetHUDWeaponAmmo(0); }
 	bEliminated = true;
 
 	GetMesh()->SetSimulatePhysics(true);
 	if (GetCharacterMovement()) { GetCharacterMovement()->DisableMovement(); }
-	if (PlayerController) { DisableInput(PlayerController); }
+	if (CHPlayerController) { DisableInput(CHPlayerController); }
 
 	FVector DamageVector = DamageHitRotation.Vector();
 	GetMesh()->AddImpulse((-DamageVector.GetSafeNormal()) * DamageImpulseScaler);
@@ -928,7 +968,7 @@ void AContactHostileCharacter::MulticastElim_Implementation()
 void AContactHostileCharacter::RespawnTimerFinished()
 {
 	ACHGameMode* CHGameMode = GetWorld()->GetAuthGameMode<ACHGameMode>();
-	CHGameMode->RequestRespawn(this, PlayerController);
+	CHGameMode->RequestRespawn(this, CHPlayerController);
 }
 
 FHitResult AContactHostileCharacter::GetFireHitResult() const
@@ -946,9 +986,8 @@ FVector AContactHostileCharacter::GetAimLocation() const
 	return Combat->HitResult.TraceEnd;
 }
 
-//FVector AContactHostileCharacter::GetHitTarget() const
-//{
-//	if (Combat == nullptr) { return FVector(); }
-//
-//	return Combat->HitTarget;
-//}
+ECombatState AContactHostileCharacter::GetCombatState() const
+{
+	if (Combat == nullptr) { return ECombatState::ECS_MAX; }
+	return Combat->CombatState;
+}

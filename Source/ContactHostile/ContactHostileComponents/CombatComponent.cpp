@@ -22,7 +22,7 @@ UCombatComponent::UCombatComponent()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-	//bReplicates = true; //Not needed in UActorComponent
+	//bReplicates = true; 
 
 
 }
@@ -33,6 +33,8 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
 	DOREPLIFETIME(UCombatComponent, bAiming);
+	DOREPLIFETIME(UCombatComponent, CombatState);
+	DOREPLIFETIME_CONDITION(UCombatComponent, CarriedAmmo, COND_OwnerOnly);
 }
 
 void UCombatComponent::BeginPlay()
@@ -43,16 +45,19 @@ void UCombatComponent::BeginPlay()
 	if (CHCharacter)
 	{
 		SpawnDefaultWeapon();
-	}
 
-	if (CHCharacter->GetFollowCamera())
-	{
-		DefaultFOV = CHCharacter->GetFollowCamera()->FieldOfView;
-		CurrentFOV = DefaultFOV;
+		if (CHCharacter->GetFollowCamera())
+		{
+			DefaultFOV = CHCharacter->GetFollowCamera()->FieldOfView;
+			CurrentFOV = DefaultFOV;
+		}
+
+		if (CHCharacter->HasAuthority())
+		{
+			InitializeCarriedAmmo();
+		}
 	}
 }
-
-
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -67,6 +72,7 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		{
 			SetHUDCrosshairSpread(DeltaTime);
 		}
+		//SetHUDCrosshairs(DeltaTime);
 		InterpZoomFOV(DeltaTime);
 	}
 }
@@ -96,7 +102,6 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 		{
 			float DistanceToCharacter = (CHCharacter->GetActorLocation() - Start).Size();
 			Start += CrosshairWorldDirection * (DistanceToCharacter + 100.f);
-			//DrawDebugSphere(GetWorld(), Start, 16.f, 12, FColor::Red, false);
 		}
 
 		FVector End = Start + (CrosshairWorldDirection * TRACE_LENGTH);
@@ -111,8 +116,7 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 			if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>())
 			{
 				HUD->SetHUDPackageCrosshairColor(FLinearColor::Red);
-			} else
-			{
+			} else {
 				HUD->SetHUDPackageCrosshairColor(FLinearColor::White);
 			}
 		}
@@ -163,11 +167,50 @@ void UCombatComponent::SetHUDCrosshairSpread(float DeltaTime)
 	}
 }
 
+void UCombatComponent::SetHUDCrosshairs()
+{
+	PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(CHCharacter->Controller) : PlayerController;
+	if (PlayerController == nullptr) { return; }
+
+	HUD = HUD == nullptr ? Cast<ACHPlayerHUD>(PlayerController->GetHUD()) : HUD;
+	if (!HUD) return;
+
+	FHUDPackage HUDPackage;
+	if (EquippedWeapon)
+	{
+		HUDPackage.CrosshairsCenter = EquippedWeapon->CrosshairsCenter;
+		HUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairsLeft;
+		HUDPackage.CrosshairsRight = EquippedWeapon->CrosshairsRight;
+		HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairsTop;
+		HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairsBottom;
+		HUDPackage.CrosshairSpread = 0.f;
+		HUDPackage.CrosshairsColor = FLinearColor::White;
+	} else {
+		HUDPackage.CrosshairsCenter = nullptr;
+		HUDPackage.CrosshairsLeft = nullptr;
+		HUDPackage.CrosshairsRight = nullptr;
+		HUDPackage.CrosshairsTop = nullptr;
+		HUDPackage.CrosshairsBottom = nullptr;
+		HUDPackage.CrosshairSpread = 0.f;
+		HUDPackage.CrosshairsColor = FLinearColor::White;
+	}
+
+	if (CHCharacter == nullptr || CHCharacter->Controller == nullptr) { return; }
+
+	HUD->SetHUDPackage(HUDPackage);
+}
+
+void UCombatComponent::DropEquippedWeapon()
+{
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->Dropped();
+	}
+}
+
 void UCombatComponent::AttachToRightHand(AActor* Item)
 {
 	if (CHCharacter == nullptr || CHCharacter->GetMesh() == nullptr || Item == nullptr) { return; }
-
-	//EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
 	const USkeletalMeshSocket* HandSocket = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"));
 	if (HandSocket)
 	{
@@ -203,128 +246,134 @@ void UCombatComponent::HideWeaponForOwner(bool bHide)
 
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 {
-
 	if (CHCharacter == nullptr || WeaponToEquip == nullptr) return;
 
+	DropEquippedWeapon();
 	EquippedWeapon = WeaponToEquip;
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
-	const USkeletalMeshSocket* HandSocket = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+	
+	AttachToRightHand(EquippedWeapon);
 
-	if (HandSocket)
-	{
-		HandSocket->AttachActor(EquippedWeapon, CHCharacter->GetMesh());
-	}
 	EquippedWeapon->SetOwner(CHCharacter);
-	//EquippedWeapon->ShowPickupWidget(false);
+	EquippedWeapon->SetHUDAmmo();
 
-	if (PlayerController == nullptr) { return; }
-	HUD = HUD == nullptr ? Cast<ACHPlayerHUD>(PlayerController->GetHUD()) : HUD;
-	FHUDPackage HUDPackage;
-	if (EquippedWeapon)
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
 	{
-		HUDPackage.CrosshairsCenter = EquippedWeapon->CrosshairsCenter;
-		HUDPackage.CrosshairsLeft = EquippedWeapon->CrosshairsLeft;
-		HUDPackage.CrosshairsRight = EquippedWeapon->CrosshairsRight;
-		HUDPackage.CrosshairsTop = EquippedWeapon->CrosshairsTop;
-		HUDPackage.CrosshairsBottom = EquippedWeapon->CrosshairsBottom;
-		HUDPackage.CrosshairSpread = 0.f;
-		HUDPackage.CrosshairsColor = FLinearColor::White;
-	} else
-	{
-		HUDPackage.CrosshairsCenter = nullptr;
-		HUDPackage.CrosshairsLeft = nullptr;
-		HUDPackage.CrosshairsRight = nullptr;
-		HUDPackage.CrosshairsTop = nullptr;
-		HUDPackage.CrosshairsBottom = nullptr;
-		HUDPackage.CrosshairSpread = 0.f;
-		HUDPackage.CrosshairsColor = FLinearColor::White;
+		CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
 	}
-	HUD->SetHUDPackage(HUDPackage);
+	PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(CHCharacter->Controller) : PlayerController;
+	if (PlayerController)
+	{
+		PlayerController->SetHUDCarriedAmmo(CarriedAmmo);
+	}
+
+	SetHUDCrosshairs();
 }
 
 void UCombatComponent::OnRep_EquippedWeapon()
 {
+	if (!CHCharacter) 
+	{  
+		UE_LOG(LogTemp, Warning, TEXT("CHCharacter is not set!!"));
+	}
 	if (EquippedWeapon && CHCharacter)
 	{
 		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
-		const USkeletalMeshSocket* HandSocket = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"));
-		if (HandSocket)
-		{
-			HandSocket->AttachActor(EquippedWeapon, CHCharacter->GetMesh());
-		}
+		AttachToRightHand(EquippedWeapon);
+		EquippedWeapon->SetOwner(CHCharacter);
+		EquippedWeapon->SetHUDAmmo();
+
+		SetHUDCrosshairs();
+
 	}
+}
+
+void UCombatComponent::OnRep_CombatState()
+{
+	switch (CombatState)
+	{
+	case ECombatState::ECS_Reloading:
+		HandleReload();
+		break;
+	case ECombatState::ECS_Unoccupied:
+		if (bFireButtonPressed) { Fire(); }
+		break;
+	}
+}
+
+void UCombatComponent::Reload()
+{
+	if (CarriedAmmo > 0 || CombatState != ECombatState::ECS_Reloading)
+	{
+		ServerReload();
+	}
+}
+
+void UCombatComponent::ServerReload_Implementation()
+{
+	CombatState = ECombatState::ECS_Reloading;
+	HandleReload();
+
+}
+
+void UCombatComponent::FinishReloading()
+{
+	if (CHCharacter == nullptr) return;
+	if (CHCharacter->HasAuthority())
+	{
+		CombatState = ECombatState::ECS_Unoccupied;
+		UpdateAmmoValues();
+	}
+	if (bFireButtonPressed) { Fire(); }
+}
+
+void UCombatComponent::UpdateAmmoValues()
+{
+	if (CHCharacter == nullptr || EquippedWeapon == nullptr) return;
+
+	int32 ReloadAmount = AmountToReload();
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		CarriedAmmoMap[EquippedWeapon->GetWeaponType()] -= ReloadAmount;
+		CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
+	}
+	PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(CHCharacter->Controller) : PlayerController;
+	if (PlayerController)
+	{
+		PlayerController->SetHUDCarriedAmmo(CarriedAmmo);
+	}
+	EquippedWeapon->AddAmmo(ReloadAmount);
+}
+
+void UCombatComponent::HandleReload()
+{
+	if (CHCharacter == nullptr) return;
+	CHCharacter->PlayReloadMontage();
+}
+
+int32 UCombatComponent::AmountToReload()
+{
+	if (EquippedWeapon == nullptr) return 0;
+
+	int32 RoomInMag = EquippedWeapon->GetMagCapacity() - EquippedWeapon->GetAmmo();
+
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		int32 AmountCarried = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
+		int32 Least = FMath::Min(RoomInMag, AmountCarried);
+
+		return FMath::Clamp(RoomInMag, 0, Least);
+	}
+	return 0;
 }
 
 void UCombatComponent::SpawnDefaultWeapon()
 {
-	if (DefaultWeaponClass && CHCharacter)
+	UWorld* World = GetWorld();
+	if (CHCharacter && CHCharacter->HasAuthority() && !CHCharacter->IsEliminated() && World && DefaultWeaponClass)
 	{
-		//if (CHCharacter->HasAuthority())
-		//{
-			//if (EquippedWeapon == nullptr)
-			//{
-				AWeapon* SpawnedWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
-				EquipWeapon( SpawnedWeapon );
-				//if (EquippedWeapon != SpawnedWeapon)
-				//{
-				//	SpawnedWeapon->Destroy();
-				//}
-			//}
-			//MulticastSpawnDefaultWeapon();
-			//ServerSpawnDefaultWeapon();
-			//ClientSpawnDefaultWeapon();
-			//EquipWeapon(DefaultWeaponClass.GetDefaultObject());
-		//}
-		//else 
-		//{
-			//ServerSpawnDefaultWeapon();
-			//ClientSpawnDefaultWeapon();
-		//}
-		//if (EquippedWeapon == nullptr && CHCharacter->HasAuthority())
-		//{
-		//	ServerSpawnDefaultWeapon();
-		//}
-	}
-}
-
-void UCombatComponent::ServerSpawnDefaultWeapon_Implementation()
-{
-	//UE_LOG(LogTemp, Warning, TEXT("ServerSpawnDefaultWeapon() Called)"));
-	//if (DefaultWeaponClass && CHCharacter)
-	//{
-	//	if (EquippedWeapon == nullptr)
-	//	{
-			EquipWeapon( GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass) );
-	//	}
-	//}
-	//MulticastSpawnDefaultWeapon();
-}
-
-void UCombatComponent::MulticastSpawnDefaultWeapon_Implementation()
-{
-//	if (DefaultWeaponClass && CHCharacter)
-//	{
-//		FActorSpawnParameters SpawnParameters;
-//		SpawnParameters.Owner = CHCharacter;
-//		//FTransform SpawnTransform = CHCharacter->GetMesh()->GetSocketByName(FName("RightHandSocket"))->GetSocketTransform();
-		AWeapon* SpawnedWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
-		EquipWeapon( SpawnedWeapon );
-//	}
-}
-
-void UCombatComponent::ClientSpawnDefaultWeapon_Implementation()
-{
-	if (DefaultWeaponClass && CHCharacter)
-	{
-		//FActorSpawnParameters SpawnParameters;
-		//SpawnParameters.Owner = CHCharacter;
-
-		AWeapon* SpawnedWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+		AWeapon* SpawnedWeapon = World->SpawnActor<AWeapon>(DefaultWeaponClass);
 		EquipWeapon(SpawnedWeapon);
-		//if (EquippedWeapon != nullptr)
-		//{
-		//	EquipWeapon(EquippedWeapon);
-		//}
 	}
 }
 
@@ -351,7 +400,7 @@ void UCombatComponent::FireButtonPressed(bool bPressed)
 
 void UCombatComponent::Fire()
 {
-	if (bCanFire)
+	if (CanFire())
 	{
 		bCanFire = false;
 		ServerFire(HitResult.ImpactPoint);
@@ -383,7 +432,7 @@ void UCombatComponent::FireTimerFinished()
 void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
 	if (EquippedWeapon == nullptr) return;
-	if (CHCharacter)
+	if (CHCharacter && CombatState == ECombatState::ECS_Unoccupied)
 	{
 		CHCharacter->PlayFireMontage(bAiming); // Player fire animation
 		EquippedWeapon->Fire(TraceHitTarget); // Weapon fire animation
@@ -395,10 +444,23 @@ void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& Trac
 	MulticastFire(TraceHitTarget);
 }
 
-//void UCombatComponent::OnRep_EquippedWeapon()
-//{
-//	if (!CHCharacter || !EquippedWeapon) return;
-//	AttachToRightHand(EquippedWeapon);
-//	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
-//	EquippedWeapon->SetOwner(CHCharacter);
-//}
+bool UCombatComponent::CanFire()
+{
+	if (EquippedWeapon == nullptr) return false;
+
+	return !EquippedWeapon->IsEmpty() && bCanFire && CombatState == ECombatState::ECS_Unoccupied;
+}
+
+void UCombatComponent::OnRep_CarriedAmmo()
+{
+	PlayerController = PlayerController == nullptr ? Cast<ACHPlayerController>(CHCharacter->Controller) : PlayerController;
+	if (PlayerController)
+	{
+		PlayerController->SetHUDCarriedAmmo(CarriedAmmo);
+	}
+}
+
+void UCombatComponent::InitializeCarriedAmmo()
+{
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartingARAmmo);
+}

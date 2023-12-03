@@ -29,6 +29,12 @@ protected:
 	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
+	UFUNCTION(Server, unreliable)
+	void ServerPlayImpact();
+	
+	UFUNCTION(NetMulticast, unreliable)
+	void MulticastPlayImpact();
+
 private:
 
 	UPROPERTY(EditAnywhere)

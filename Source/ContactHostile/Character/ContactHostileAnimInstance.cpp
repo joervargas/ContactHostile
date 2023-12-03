@@ -9,6 +9,7 @@
 #include "ContactHostile/ContactHostileComponents/CombatComponent.h"
 #include "ContactHostile/Weapon/Weapon.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "ContactHostile/CHTypes/CombatState.h"
 //#include "KismetAnimationLibrary.h"
 
 
@@ -93,4 +94,6 @@ void UContactHostileAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		LeftHandTransform.SetRotation(FQuat(OutRotation));
 
 	}
+
+	bUseFABRIK = CHCharacter->GetCombatState() != ECombatState::ECS_Reloading;
 }
