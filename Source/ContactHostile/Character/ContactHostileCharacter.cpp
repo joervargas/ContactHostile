@@ -891,6 +891,18 @@ void AContactHostileCharacter::PlayReloadMontage()
 			break;
 		}
 		AnimInstance->Montage_JumpToSection(SectionName);
+		//;
+	}
+}
+
+void AContactHostileCharacter::StopReloadMontage()
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr) { return; }
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && ReloadMontage)
+	{
+		AnimInstance->Montage_Stop(0.1f, ReloadMontage);
 	}
 }
 

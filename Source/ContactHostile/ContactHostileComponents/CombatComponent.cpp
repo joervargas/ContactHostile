@@ -14,7 +14,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
 #include "TimerManager.h"
-
+#include "Sound/SoundCue.h"
 
 
 UCombatComponent::UCombatComponent()
@@ -74,6 +74,12 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		}
 		//SetHUDCrosshairs(DeltaTime);
 		InterpZoomFOV(DeltaTime);
+
+		if (CHCharacter->GetIsSprintButtonPressed() && CombatState == ECombatState::ECS_Reloading)
+		{
+			CHCharacter->StopReloadMontage();
+			CombatState = ECombatState::ECS_Unoccupied;
+		}
 	}
 }
 
@@ -266,6 +272,18 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 	{
 		PlayerController->SetHUDCarriedAmmo(CarriedAmmo);
 	}
+	if (EquippedWeapon->EquipSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			EquippedWeapon->EquipSound,
+			CHCharacter->GetActorLocation()
+		);
+	}
+	if (EquippedWeapon->IsEmpty())
+	{
+		Reload();
+	}
 
 	SetHUDCrosshairs();
 }
@@ -283,8 +301,21 @@ void UCombatComponent::OnRep_EquippedWeapon()
 		EquippedWeapon->SetOwner(CHCharacter);
 		EquippedWeapon->SetHUDAmmo();
 
-		SetHUDCrosshairs();
+		if (EquippedWeapon->EquipSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				this,
+				EquippedWeapon->EquipSound,
+				CHCharacter->GetActorLocation()
+			);
+		}
 
+		if (EquippedWeapon->IsEmpty())
+		{
+			Reload();
+		}
+
+		SetHUDCrosshairs();
 	}
 }
 
@@ -322,7 +353,10 @@ void UCombatComponent::FinishReloading()
 	if (CHCharacter->HasAuthority())
 	{
 		CombatState = ECombatState::ECS_Unoccupied;
-		UpdateAmmoValues();
+		if (!CHCharacter->GetIsSprintButtonPressed())
+		{
+			UpdateAmmoValues();
+		}
 	}
 	if (bFireButtonPressed) { Fire(); }
 }
@@ -426,6 +460,10 @@ void UCombatComponent::FireTimerFinished()
 	if (bFireButtonPressed && EquippedWeapon->bFullAutomatic)
 	{
 		Fire();
+	}
+	if (EquippedWeapon->IsEmpty())
+	{
+		Reload();
 	}
 }
 

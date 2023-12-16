@@ -198,6 +198,8 @@ private:
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bSprintButtonPressed;
 
+	bool bSprinting; // TODO replicate and command sprinting on this flag.
+
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta = (AllowPrivateAccess = "true"))
 	float CameraDistanceThreshold = 150.f;
 
@@ -336,6 +338,7 @@ public:
 
 	void PlayFireMontage(bool bAiming);
 	void PlayReloadMontage();
+	void StopReloadMontage();
 	void PlayHitReactMontage();
 	void PlayDeathMontage();
 
