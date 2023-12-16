@@ -21,7 +21,7 @@ protected:
 private:
 
 	UPROPERTY()
-	class ACHPlayerHUD* PlayerHUD;
+	class ACHPlayerHUD* CHPlayerHUD;
 
 public:
 
@@ -31,4 +31,8 @@ public:
 
 	void SetHUDScore(float Score);
 	void SetHUDKilled(int32 KilledCount);
+
+	void SetHUDWeaponAmmo(int32 AmmoCount);
+	void SetHUDCarriedAmmo(int32 AmmoCount);
+
 };

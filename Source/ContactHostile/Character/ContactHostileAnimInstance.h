@@ -106,4 +106,13 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = Health, meta = (AllowPrivateAccess = "true"))
 	bool bEliminated;
+
+	UPROPERTY(BlueprintReadOnly, Category = Health, meta = (AllowPrivateAccess = "true"))
+	bool bUseFABRIK;
+
+	UPROPERTY(BlueprintReadOnly, Category = Health, meta = (AllowPrivateAccess = "true"))
+	bool bUseAimOffsets;
+
+	UPROPERTY(BlueprintReadOnly, Category = Health, meta = (AllowPrivateAccess = "true"))
+	bool bUseRightHandTransform;
 };

@@ -13,7 +13,7 @@ void ACHPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	PlayerHUD = Cast<ACHPlayerHUD>(GetHUD());
+	CHPlayerHUD = Cast<ACHPlayerHUD>(GetHUD());
 }
 
 void ACHPlayerController::OnPossess(APawn* InPawn)
@@ -29,46 +29,74 @@ void ACHPlayerController::OnPossess(APawn* InPawn)
 
 void ACHPlayerController::SetHUDHealth(float Health, float MaxHealth)
 {
-	PlayerHUD = PlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : PlayerHUD;
-	bool bHUDValid = PlayerHUD && 
-		PlayerHUD->PlayerOverlay && 
-		PlayerHUD->PlayerOverlay->HealthBar && 
-		PlayerHUD->PlayerOverlay->HealthText;
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	bool bHUDValid = CHPlayerHUD && 
+		CHPlayerHUD->PlayerOverlay && 
+		CHPlayerHUD->PlayerOverlay->HealthBar && 
+		CHPlayerHUD->PlayerOverlay->HealthText;
 
 	if (bHUDValid)
 	{
 		const float HealthPercent = Health / MaxHealth;
-		PlayerHUD->PlayerOverlay->HealthBar->SetPercent(HealthPercent);
+		CHPlayerHUD->PlayerOverlay->HealthBar->SetPercent(HealthPercent);
 		FString HealthText = FString::Printf(TEXT("%d/%d"), FMath::CeilToInt(Health), FMath::CeilToInt(MaxHealth));
-		PlayerHUD->PlayerOverlay->HealthText->SetText(FText::FromString(HealthText));
+		CHPlayerHUD->PlayerOverlay->HealthText->SetText(FText::FromString(HealthText));
 	}
 
 }
 
 void ACHPlayerController::SetHUDScore(float Score)
 {
-	PlayerHUD = PlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : PlayerHUD;
-	bool bHUDValid = PlayerHUD &&
-		PlayerHUD->PlayerOverlay &&
-		PlayerHUD->PlayerOverlay->ScoreAmount;
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	bool bHUDValid = CHPlayerHUD &&
+		CHPlayerHUD->PlayerOverlay &&
+		CHPlayerHUD->PlayerOverlay->ScoreAmount;
 
 	if (bHUDValid)
 	{
 		FString ScoreText = FString::Printf(TEXT("%d"), FMath::FloorToInt(Score));
-		PlayerHUD->PlayerOverlay->ScoreAmount->SetText(FText::FromString(ScoreText));
+		CHPlayerHUD->PlayerOverlay->ScoreAmount->SetText(FText::FromString(ScoreText));
 	}
 }
 
 void ACHPlayerController::SetHUDKilled(int32 KilledCount)
 {
-	PlayerHUD = PlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : PlayerHUD;
-	bool bHUDValid = PlayerHUD &&
-		PlayerHUD->PlayerOverlay &&
-		PlayerHUD->PlayerOverlay->KilledAmount;
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	bool bHUDValid = CHPlayerHUD &&
+		CHPlayerHUD->PlayerOverlay &&
+		CHPlayerHUD->PlayerOverlay->KilledAmount;
 
 	if (bHUDValid)
 	{
 		FString KilledText = FString::Printf(TEXT("%d"), KilledCount);
-		PlayerHUD->PlayerOverlay->KilledAmount->SetText(FText::FromString(KilledText));
+		CHPlayerHUD->PlayerOverlay->KilledAmount->SetText(FText::FromString(KilledText));
+	}
+}
+
+void ACHPlayerController::SetHUDWeaponAmmo(int32 AmmoCount)
+{
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	bool bHUDValid = CHPlayerHUD &&
+		CHPlayerHUD->PlayerOverlay &&
+		CHPlayerHUD->PlayerOverlay->WeaponAmmoAmount;
+
+	if (bHUDValid)
+	{
+		FString AmmoText = FString::Printf(TEXT("%d"), AmmoCount);
+		CHPlayerHUD->PlayerOverlay->WeaponAmmoAmount->SetText(FText::FromString(AmmoText));
+	}
+}
+
+void ACHPlayerController::SetHUDCarriedAmmo(int32 AmmoCount)
+{
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	bool bHUDValid = CHPlayerHUD &&
+		CHPlayerHUD->PlayerOverlay &&
+		CHPlayerHUD->PlayerOverlay->CarriedAmmoAmount;
+
+	if (bHUDValid)
+	{
+		FString AmmoText = FString::Printf(TEXT("%d"), AmmoCount);
+		CHPlayerHUD->PlayerOverlay->CarriedAmmoAmount->SetText(FText::FromString(AmmoText));
 	}
 }

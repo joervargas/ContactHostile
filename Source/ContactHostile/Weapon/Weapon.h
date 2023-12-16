@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "WeaponTypes.h"
 #include "Weapon.generated.h"
 
 UENUM(BlueprintType)
@@ -29,6 +30,8 @@ public:
 	// Called to replicate members
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	virtual void OnRep_Owner();
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -37,6 +40,8 @@ public:
 	virtual void Fire(const FVector& HitTarget);
 
 	void Dropped();
+
+	void AddAmmo(int32 Amount);
 	/**
 	* Textures for the weapon crosshairs
 	*/
@@ -72,6 +77,11 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	bool bFullAutomatic = true;
+
+	void SetHUDAmmo();
+
+	UPROPERTY(EditAnywhere)
+	class USoundCue* EquipSound;
 
 protected:
 	// Called when the game starts or when spawned
@@ -121,6 +131,25 @@ private:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<class ACasing> CasingClass;
 
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+	int32 Ammo;
+
+	UFUNCTION()
+	void OnRep_Ammo();
+
+	void SpendRound();
+
+	UPROPERTY(EditAnywhere)
+	int32 MagCapacity;
+
+	UPROPERTY()
+	class AContactHostileCharacter* CHOwnerCharacter;
+
+	UPROPERTY()
+	class ACHPlayerController* CHOwnerController;
+
+	UPROPERTY(EditAnywhere)
+	EWeaponType WeaponType;
 
 public:	
 
@@ -134,4 +163,11 @@ public:
 	FORCEINLINE float GetAimInterpSpeed() const { return AimInterpSpeed; }
 
 	FORCEINLINE void SetHideLocally(bool bHide) { WeaponMesh->SetHiddenInGame(bHide); }
+
+	bool IsEmpty();
+
+	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
+
+	FORCEINLINE int32 GetAmmo() const { return Ammo; }
+	FORCEINLINE int32 GetMagCapacity() const { return MagCapacity; }
 };

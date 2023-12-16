@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "ContactHostile/CHTypes/TurningInPlace.h"
 #include "ContactHostile/CHTypes/InteractWithCrosshairsInterface.h"
+#include "ContactHostile/CHTypes/CombatState.h"
 #include "ContactHostileCharacter.generated.h"
 
 
@@ -72,6 +73,7 @@ protected:
 	void SprintButtonReleased();
 
 	void EquipButtonPressed();
+	void ReloadButtonPressed();
 
 	void CrouchProneButtonPressed();
 	void CrouchProneButtonRepeat();
@@ -196,6 +198,8 @@ private:
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bSprintButtonPressed;
 
+	bool bSprinting; // TODO replicate and command sprinting on this flag.
+
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, meta = (AllowPrivateAccess = "true"))
 	float CameraDistanceThreshold = 150.f;
 
@@ -207,6 +211,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* FireWeaponMontage; // Set in Blueprints
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	UAnimMontage* ReloadMontage;
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* HitReactMontage; // Set in Blueprints
@@ -221,7 +228,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
 
 	UFUNCTION(Server, Reliable)
@@ -272,7 +279,7 @@ private:
 	bool bEliminated = false;
 
 	UPROPERTY()
-	class ACHPlayerController* PlayerController;
+	class ACHPlayerController* CHPlayerController;
 
 	FTimerHandle RespawnTimer;
 
@@ -330,6 +337,8 @@ public:
 	void AssignSpeeds();
 
 	void PlayFireMontage(bool bAiming);
+	void PlayReloadMontage();
+	void StopReloadMontage();
 	void PlayHitReactMontage();
 	void PlayDeathMontage();
 
@@ -345,4 +354,5 @@ public:
 	FHitResult GetFireHitResult() const;
 	FVector GetAimLocation() const;
 
+	ECombatState GetCombatState() const;
 };
