@@ -17,8 +17,29 @@ class CONTACTHOSTILE_API ACHGameMode : public AGameMode
 	GENERATED_BODY()
 
 public:
+
+	ACHGameMode();
+
+	virtual void Tick(float DeltaTime) override;
 	
 	virtual void PlayerEliminated(AContactHostileCharacter* EliminatedCharacter, ACHPlayerController* EliminatedController, ACHPlayerController* AttackerController);
 
 	virtual void RequestRespawn(ACharacter* EliminatedCharacter, AController* EliminatedCharController);
+
+public:
+
+	UPROPERTY(EditDefaultsOnly)
+	float WarmupTime = 5.f;
+
+	float LevelStartingTime = 0.f;
+
+protected:
+
+	virtual void BeginPlay() override;
+
+	virtual void OnMatchStateSet() override;
+
+private:
+
+	float CountDownTime = 0.f;
 };

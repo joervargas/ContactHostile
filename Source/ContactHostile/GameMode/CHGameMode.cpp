@@ -9,6 +9,49 @@
 #include "ContactHostile/PlayerState/CHPlayerState.h"
 
 
+ACHGameMode::ACHGameMode()
+{
+	bDelayedStart = true;
+}
+
+
+void ACHGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	LevelStartingTime = GetWorld()->GetTimeSeconds();
+}
+
+void ACHGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (MatchState == MatchState::WaitingToStart)
+	{
+		CountDownTime = WarmupTime - (GetWorld()->GetTimeSeconds() + LevelStartingTime);
+		if (CountDownTime <= 0.f)
+		{
+			StartMatch();
+		}
+	}
+}
+
+
+void ACHGameMode::OnMatchStateSet()
+{
+	Super::OnMatchStateSet();
+
+	// Loop through all player controllers on the server
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; It++)
+	{
+		ACHPlayerController* CHPlayer = Cast<ACHPlayerController>(*It);
+		if (CHPlayer)
+		{
+			CHPlayer->OnMatchStateSet(MatchState);
+		}
+	}
+}
+
 void ACHGameMode::PlayerEliminated(AContactHostileCharacter* EliminatedCharacter, ACHPlayerController* EliminatedController, ACHPlayerController* AttackerController)
 {
 	ACHPlayerState* AttackerPlayerState = AttackerController ? Cast<ACHPlayerState>(AttackerController->PlayerState) : nullptr;
@@ -46,3 +89,4 @@ void ACHGameMode::RequestRespawn(ACharacter* EliminatedCharacter, AController* E
 		RestartPlayerAtPlayerStart(EliminatedCharController, PlayerStarts[Selection]);
 	}
 }
+
