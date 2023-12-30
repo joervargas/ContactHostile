@@ -41,10 +41,15 @@ public:
 	UPROPERTY()
 	class UPlayerOverlay* PlayerOverlay;
 
+	UPROPERTY(EditAnywhere, Category = "Announcements")
+	TSubclassOf<UUserWidget> AnnouncementClass; // Blueprint UAnnouncement class
+
+	UPROPERTY()
+	class UAnnouncement* AnnouncementOverlay;
+
 protected:
 
 	virtual void BeginPlay() override;
-	void AddCharacterOverlay();
 
 private:
 
@@ -61,4 +66,6 @@ public:
 	FORCEINLINE void SetHUDPackageCrossHairSpread(const float Spread) { HUDPackage.CrosshairSpread = Spread; }
 	FORCEINLINE void SetHUDPackageCrosshairColor(const FLinearColor Color) { HUDPackage.CrosshairsColor = Color; }
 
+	void AddCharacterOverlay();
+	void AddAnnouncement();
 };

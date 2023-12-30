@@ -4,12 +4,12 @@
 #include "CHPlayerHUD.h"
 #include "GameFramework/PlayerController.h"
 #include "PlayerOverlay.h"
+#include "Announcement.h"
 
 void ACHPlayerHUD::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AddCharacterOverlay();
 }
 
 void ACHPlayerHUD::AddCharacterOverlay()
@@ -19,6 +19,16 @@ void ACHPlayerHUD::AddCharacterOverlay()
 	{
 		PlayerOverlay = CreateWidget<UPlayerOverlay>(PlayerController, PlayerOverlayClass);
 		PlayerOverlay->AddToViewport();
+	}
+}
+
+void ACHPlayerHUD::AddAnnouncement()
+{
+	APlayerController* PlayerController = GetOwningPlayerController();
+	if (PlayerController && PlayerOverlayClass)
+	{
+		AnnouncementOverlay = CreateWidget<UAnnouncement>(PlayerController, AnnouncementClass);
+		AnnouncementOverlay->AddToViewport();
 	}
 }
 

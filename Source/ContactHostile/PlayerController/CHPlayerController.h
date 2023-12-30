@@ -20,6 +20,8 @@ protected:
 
 	void SetHUDTime();
 
+	void PollInit();
+
 	/**
 	* Sync time between client and server
 	*/
@@ -66,10 +68,15 @@ public:
 
 	void OnMatchStateSet(FName State);
 
+	void HandleMatchHasStarted();
+
 private:
 
 	UPROPERTY()
 	class ACHPlayerHUD* CHPlayerHUD;
+
+	UPROPERTY()
+	class UPlayerOverlay* CHPlayerOverlay;
 
 	float MatchTime = 120.f;
 
@@ -80,4 +87,12 @@ private:
 
 	UFUNCTION()
 	void OnRep_MatchState();
+
+	bool bInitializeCharacterOverlay = false;
+
+	float HUDHealth;
+	float HUDMakHealth;
+	float HUDScore;
+	float HUDKilledCount;
+
 };

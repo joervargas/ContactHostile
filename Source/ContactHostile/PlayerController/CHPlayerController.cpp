@@ -5,9 +5,12 @@
 #include "ContactHostile/Character/ContactHostileCharacter.h"
 #include "ContactHostile/HUD/CHPlayerHUD.h"
 #include "ContactHostile/HUD/PlayerOverlay.h"
+#include "ContactHostile/HUD/Announcement.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Net/UnrealNetwork.h"
+#include "ContactHostile/GameMode/CHGameMode.h"
+
 
 
 void ACHPlayerController::BeginPlay()
@@ -15,6 +18,10 @@ void ACHPlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	CHPlayerHUD = Cast<ACHPlayerHUD>(GetHUD());
+	if (CHPlayerHUD)
+	{
+		CHPlayerHUD->AddAnnouncement();
+	}
 }
 
 void ACHPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -39,8 +46,8 @@ void ACHPlayerController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	SetHUDTime();
-
 	CheckTimeSync(DeltaTime);
+	PollInit();
 }
 
 void ACHPlayerController::CheckTimeSync(float DeltaTime)
@@ -63,6 +70,23 @@ void ACHPlayerController::SetHUDTime()
 	{
 		SetHUDMatchTimer(SecondsLeft);
 		CountdownInt = SecondsLeft;
+	}
+}
+
+void ACHPlayerController::PollInit()
+{
+	if (CHPlayerOverlay == nullptr)
+	{
+		if (CHPlayerHUD && CHPlayerHUD->PlayerOverlay)
+		{
+			CHPlayerOverlay = CHPlayerHUD->PlayerOverlay;
+			if (CHPlayerOverlay)
+			{
+				SetHUDHealth(HUDHealth, HUDMakHealth);
+				SetHUDScore(HUDScore);
+				SetHUDKilled(HUDKilledCount);
+			}
+		}
 	}
 }
 
@@ -115,6 +139,10 @@ void ACHPlayerController::SetHUDHealth(float Health, float MaxHealth)
 		CHPlayerHUD->PlayerOverlay->HealthBar->SetPercent(HealthPercent);
 		FString HealthText = FString::Printf(TEXT("%d/%d"), FMath::CeilToInt(Health), FMath::CeilToInt(MaxHealth));
 		CHPlayerHUD->PlayerOverlay->HealthText->SetText(FText::FromString(HealthText));
+	} else {
+		bInitializeCharacterOverlay = true;
+		HUDHealth = Health;
+		HUDMakHealth = MaxHealth;
 	}
 
 }
@@ -130,6 +158,9 @@ void ACHPlayerController::SetHUDScore(float Score)
 	{
 		FString ScoreText = FString::Printf(TEXT("%d"), FMath::FloorToInt(Score));
 		CHPlayerHUD->PlayerOverlay->ScoreAmount->SetText(FText::FromString(ScoreText));
+	} else {
+		bInitializeCharacterOverlay = true;
+		HUDScore = Score;
 	}
 }
 
@@ -144,6 +175,9 @@ void ACHPlayerController::SetHUDKilled(int32 KilledCount)
 	{
 		FString KilledText = FString::Printf(TEXT("%d"), KilledCount);
 		CHPlayerHUD->PlayerOverlay->KilledAmount->SetText(FText::FromString(KilledText));
+	} else {
+		bInitializeCharacterOverlay = true;
+		HUDKilledCount = KilledCount;
 	}
 }
 
@@ -194,8 +228,35 @@ void ACHPlayerController::SetHUDMatchTimer(float Time)
 void ACHPlayerController::OnMatchStateSet(FName State)
 {
 	MatchState = State;
+
+	if (MatchState == MatchState::WaitingToStart)
+	{
+
+	}
+	if (MatchState == MatchState::InProgress)
+	{
+		HandleMatchHasStarted();
+	}
 }
+
 
 void ACHPlayerController::OnRep_MatchState()
 {
+	if (MatchState == MatchState::InProgress)
+	{
+		HandleMatchHasStarted();
+	}
+}
+
+void ACHPlayerController::HandleMatchHasStarted()
+{
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	if (CHPlayerHUD)
+	{
+		CHPlayerHUD->AddCharacterOverlay();
+		if (CHPlayerHUD->AnnouncementOverlay)
+		{
+			CHPlayerHUD->AnnouncementOverlay->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
 }
