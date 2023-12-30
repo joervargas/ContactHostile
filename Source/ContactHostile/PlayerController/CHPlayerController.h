@@ -18,12 +18,39 @@ protected:
 
 	virtual void BeginPlay() override;
 
-private:
+	void SetHUDTime();
 
-	UPROPERTY()
-	class ACHPlayerHUD* CHPlayerHUD;
+	/**
+	* Sync time between client and server
+	*/
+
+	// Requests the current server time, takes current client time
+	UFUNCTION(Server, Reliable)
+	void ServerRequestServerTime(float TimeOfClientRequest);
+
+	// Reports current server time, takes client's request time and time server recieved request
+	UFUNCTION(Client, Reliable)
+	void ClientReportServerTime(float TimeOfClientRequest, float TimeOfServerRecievedClientRequest);
+
+	float ClientServerDeltaTime = 0.f; // Difference between client and server time
+
+	UPROPERTY(EditAnywhere, Category = Time)
+	float TimeSyncFrequency = 5.f;
+
+	float TimeSyncTimer = 0.f; // used to calculate when to call TimeSyncFrequency
+
+	void CheckTimeSync(float DeltaTime);
 
 public:
+
+	virtual void ReceivedPlayer() override; // Overridden to Sync time as soon as possible
+
+	virtual void Tick(float DeltaTime) override;
+
+	// Called to replicate members
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual float GetServerTime(); // Synced with server world clock
 
 	virtual void OnPossess(APawn* InPawn) override;
 
@@ -35,4 +62,22 @@ public:
 	void SetHUDWeaponAmmo(int32 AmmoCount);
 	void SetHUDCarriedAmmo(int32 AmmoCount);
 
+	void SetHUDMatchTimer(float Time);
+
+	void OnMatchStateSet(FName State);
+
+private:
+
+	UPROPERTY()
+	class ACHPlayerHUD* CHPlayerHUD;
+
+	float MatchTime = 120.f;
+
+	uint32 CountdownInt = 0;
+
+	UPROPERTY(ReplicatedUsing = OnRep_MatchState)
+	FName MatchState;
+
+	UFUNCTION()
+	void OnRep_MatchState();
 };
