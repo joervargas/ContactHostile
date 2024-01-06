@@ -10,6 +10,7 @@
 #include "Components/TextBlock.h"
 #include "Net/UnrealNetwork.h"
 #include "ContactHostile/GameMode/CHGameMode.h"
+#include "Kismet/GameplayStatics.h"
 
 
 
@@ -17,11 +18,9 @@ void ACHPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	ServerCheckMatchState();
 	CHPlayerHUD = Cast<ACHPlayerHUD>(GetHUD());
-	if (CHPlayerHUD)
-	{
-		CHPlayerHUD->AddAnnouncement();
-	}
+
 }
 
 void ACHPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -30,6 +29,7 @@ void ACHPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& 
 
 	DOREPLIFETIME(ACHPlayerController, MatchState);
 }
+
 
 void ACHPlayerController::ReceivedPlayer()
 {
@@ -60,6 +60,40 @@ void ACHPlayerController::CheckTimeSync(float DeltaTime)
 			ServerRequestServerTime(GetWorld()->GetTimeSeconds());
 		}
 		TimeSyncTimer = 0.f;
+	}
+}
+
+void ACHPlayerController::ServerCheckMatchState_Implementation()
+{
+	ACHGameMode* GameMode = Cast<ACHGameMode>(UGameplayStatics::GetGameMode(this));
+	if (GameMode)
+	{
+		WarmupTime = GameMode->WarmupTime;
+		MatchTime = GameMode->MatchTime;
+		StartingTime = GameMode->LevelStartingTime;
+
+		MatchState = GameMode->GetMatchState();
+
+		ClientJoinMidGame(MatchState, WarmupTime, MatchTime, StartingTime);
+
+		if (CHPlayerHUD && MatchState == MatchState::WaitingToStart)
+		{
+			CHPlayerHUD->AddAnnouncement();
+		}
+	}
+}
+
+void ACHPlayerController::ClientJoinMidGame_Implementation(FName LevelState, float LevelWarmupTime, float LevelMatchTime, float LevelStartingTime)
+{
+	MatchState = LevelState;
+	WarmupTime = LevelWarmupTime;
+	StartingTime = LevelStartingTime;
+
+	OnMatchStateSet(MatchState);
+
+	if (CHPlayerHUD && MatchState == MatchState::WaitingToStart)
+	{
+		CHPlayerHUD->AddAnnouncement();
 	}
 }
 

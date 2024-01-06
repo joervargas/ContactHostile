@@ -43,6 +43,12 @@ protected:
 
 	void CheckTimeSync(float DeltaTime);
 
+	UFUNCTION(Server, Reliable)
+	void ServerCheckMatchState();
+
+	UFUNCTION(Client, Reliable)
+	void ClientJoinMidGame(FName LevelState, float LevelWarmupTime, float LevelMatchTime, float LevelStartingTime);
+
 public:
 
 	virtual void ReceivedPlayer() override; // Overridden to Sync time as soon as possible
@@ -78,7 +84,9 @@ private:
 	UPROPERTY()
 	class UPlayerOverlay* CHPlayerOverlay;
 
-	float MatchTime = 120.f;
+	float StartingTime = 0.f;
+	float MatchTime = 0.f;
+	float WarmupTime = 0.f;
 
 	uint32 CountdownInt = 0;
 
