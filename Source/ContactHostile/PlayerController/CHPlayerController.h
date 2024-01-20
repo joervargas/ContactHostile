@@ -71,10 +71,13 @@ public:
 	void SetHUDCarriedAmmo(int32 AmmoCount);
 
 	void SetHUDMatchTimer(float Time);
+	void SetHUDAnnouncementTimer(float Time);
 
 	void OnMatchStateSet(FName State);
 
 	void HandleMatchHasStarted();
+
+	void HandleMatchCooldown();
 
 private:
 
@@ -84,9 +87,9 @@ private:
 	UPROPERTY()
 	class UPlayerOverlay* CHPlayerOverlay;
 
-	float StartingTime = 0.f;
-	float MatchTime = 0.f;
-	float WarmupTime = 0.f;
+	float StartingTime = 0.f; // Level Starting Time
+	float MatchTime = 0.f; // Time length of match
+	float WarmupTime = 0.f; // Time length of countdown before match
 
 	uint32 CountdownInt = 0;
 
@@ -96,7 +99,7 @@ private:
 	UFUNCTION()
 	void OnRep_MatchState();
 
-	bool bInitializeCharacterOverlay = false;
+	bool bInitializeCHPlayerOverlay = false; // Flag used to indicate if CHPlayerOverlay needs to be initialized.
 
 	float HUDHealth;
 	float HUDMakHealth;

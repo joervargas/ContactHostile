@@ -8,6 +8,12 @@
 
 class AContactHostileCharacter;
 class ACHPlayerController;
+
+namespace MatchState
+{
+	extern CONTACTHOSTILE_API const FName Cooldown; // Match duration reached. Display Winner
+}
+
 /**
  * 
  */
@@ -32,9 +38,12 @@ public:
 	float MatchTime = 120.f;
 
 	UPROPERTY(EditDefaultsOnly)
-	float WarmupTime = 5.f;
+	float WarmupTime = 10.f; // Countdown time before match
 
-	float LevelStartingTime = 0.f;
+	UPROPERTY(EditDefaultsOnly)
+	float CooldownTime = 10.f; // Time after match displaying the winner
+
+	float LevelStartingTime = 0.f; // Time the level starts
 
 protected:
 
@@ -44,5 +53,5 @@ protected:
 
 private:
 
-	float CountDownTime = 0.f;
+	float CountdownTime = 0.f;
 };

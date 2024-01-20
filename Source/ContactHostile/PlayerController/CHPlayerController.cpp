@@ -18,9 +18,8 @@ void ACHPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ServerCheckMatchState();
 	CHPlayerHUD = Cast<ACHPlayerHUD>(GetHUD());
-
+	ServerCheckMatchState();
 }
 
 void ACHPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -72,11 +71,12 @@ void ACHPlayerController::ServerCheckMatchState_Implementation()
 		MatchTime = GameMode->MatchTime;
 		StartingTime = GameMode->LevelStartingTime;
 
+		// Replicated
 		MatchState = GameMode->GetMatchState();
 
 		ClientJoinMidGame(MatchState, WarmupTime, MatchTime, StartingTime);
 
-		if (CHPlayerHUD && MatchState == MatchState::WaitingToStart)
+		if (CHPlayerHUD && MatchState == MatchState::WaitingToStart && CHPlayerHUD->AnnouncementOverlay == nullptr)
 		{
 			CHPlayerHUD->AddAnnouncement();
 		}
@@ -85,9 +85,10 @@ void ACHPlayerController::ServerCheckMatchState_Implementation()
 
 void ACHPlayerController::ClientJoinMidGame_Implementation(FName LevelState, float LevelWarmupTime, float LevelMatchTime, float LevelStartingTime)
 {
-	MatchState = LevelState;
 	WarmupTime = LevelWarmupTime;
+	MatchTime = LevelMatchTime;
 	StartingTime = LevelStartingTime;
+	MatchState = LevelState;
 
 	OnMatchStateSet(MatchState);
 
@@ -99,12 +100,34 @@ void ACHPlayerController::ClientJoinMidGame_Implementation(FName LevelState, flo
 
 void ACHPlayerController::SetHUDTime()
 {
-	uint32 SecondsLeft = FMath::CeilToInt(MatchTime - GetServerTime());
+	float TimeLeft = 0.f;
+	if (MatchState == MatchState::WaitingToStart)
+	{
+		TimeLeft = WarmupTime - GetServerTime() + StartingTime;
+	}
+	if (MatchState == MatchState::InProgress)
+	{
+		TimeLeft = WarmupTime + MatchTime - GetServerTime() + StartingTime;
+	}
+
+	if (HasAuthority())
+	{
+	
+	}
+
+	uint32 SecondsLeft = FMath::CeilToInt(TimeLeft);
 	if (CountdownInt != SecondsLeft)
 	{
-		SetHUDMatchTimer(SecondsLeft);
-		CountdownInt = SecondsLeft;
+		if (MatchState == MatchState::WaitingToStart)
+		{
+			SetHUDAnnouncementTimer(TimeLeft);
+		}
+		if (MatchState == MatchState::InProgress)
+		{
+			SetHUDMatchTimer(TimeLeft);
+		}
 	}
+	CountdownInt = SecondsLeft;
 }
 
 void ACHPlayerController::PollInit()
@@ -134,9 +157,7 @@ void ACHPlayerController::ServerRequestServerTime_Implementation(float TimeOfCli
 void ACHPlayerController::ClientReportServerTime_Implementation(float TimeOfClientRequest, float TimeOfServerRecievedClientRequest)
 {
 	float RoundTripTime = GetWorld()->GetTimeSeconds() - TimeOfClientRequest;
-	//float ServerClientTripTime = GetWorld()->GetTimeSeconds() - TimeOfServerRecievedClientRequest;
 	float CurrentServerTime = TimeOfServerRecievedClientRequest + (0.5f * RoundTripTime);
-	
 
 	ClientServerDeltaTime = CurrentServerTime - GetWorld()->GetTimeSeconds();
 }
@@ -174,7 +195,7 @@ void ACHPlayerController::SetHUDHealth(float Health, float MaxHealth)
 		FString HealthText = FString::Printf(TEXT("%d/%d"), FMath::CeilToInt(Health), FMath::CeilToInt(MaxHealth));
 		CHPlayerHUD->PlayerOverlay->HealthText->SetText(FText::FromString(HealthText));
 	} else {
-		bInitializeCharacterOverlay = true;
+		bInitializeCHPlayerOverlay = true;
 		HUDHealth = Health;
 		HUDMakHealth = MaxHealth;
 	}
@@ -193,7 +214,7 @@ void ACHPlayerController::SetHUDScore(float Score)
 		FString ScoreText = FString::Printf(TEXT("%d"), FMath::FloorToInt(Score));
 		CHPlayerHUD->PlayerOverlay->ScoreAmount->SetText(FText::FromString(ScoreText));
 	} else {
-		bInitializeCharacterOverlay = true;
+		bInitializeCHPlayerOverlay = true;
 		HUDScore = Score;
 	}
 }
@@ -210,7 +231,7 @@ void ACHPlayerController::SetHUDKilled(int32 KilledCount)
 		FString KilledText = FString::Printf(TEXT("%d"), KilledCount);
 		CHPlayerHUD->PlayerOverlay->KilledAmount->SetText(FText::FromString(KilledText));
 	} else {
-		bInitializeCharacterOverlay = true;
+		bInitializeCHPlayerOverlay = true;
 		HUDKilledCount = KilledCount;
 	}
 }
@@ -259,26 +280,45 @@ void ACHPlayerController::SetHUDMatchTimer(float Time)
 	}
 }
 
+void ACHPlayerController::SetHUDAnnouncementTimer(float Time)
+{
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	bool bHUDValid = CHPlayerHUD &&
+		CHPlayerHUD->AnnouncementOverlay &&
+		CHPlayerHUD->AnnouncementOverlay->WarmupTimeText;
+
+	if (bHUDValid)
+	{
+		int32 Minutes = FMath::FloorToInt(Time / 60.f);
+		int32 Seconds = Time - Minutes * 60;
+		FString TimerText = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds);
+		CHPlayerHUD->AnnouncementOverlay->WarmupTimeText->SetText(FText::FromString(TimerText));
+	}
+}
+
 void ACHPlayerController::OnMatchStateSet(FName State)
 {
 	MatchState = State;
 
-	if (MatchState == MatchState::WaitingToStart)
-	{
-
-	}
 	if (MatchState == MatchState::InProgress)
 	{
 		HandleMatchHasStarted();
 	}
+	else if (MatchState == MatchState::Cooldown)
+	{
+		HandleMatchCooldown();
+	}
 }
-
 
 void ACHPlayerController::OnRep_MatchState()
 {
 	if (MatchState == MatchState::InProgress)
 	{
 		HandleMatchHasStarted();
+	}
+	else if (MatchState == MatchState::Cooldown)
+	{
+		HandleMatchCooldown();
 	}
 }
 
@@ -291,6 +331,19 @@ void ACHPlayerController::HandleMatchHasStarted()
 		if (CHPlayerHUD->AnnouncementOverlay)
 		{
 			CHPlayerHUD->AnnouncementOverlay->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+}
+
+void ACHPlayerController::HandleMatchCooldown()
+{
+	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
+	if (CHPlayerHUD)
+	{
+		CHPlayerHUD->PlayerOverlay->RemoveFromParent();
+		if (CHPlayerHUD->AnnouncementOverlay)
+		{
+			CHPlayerHUD->AnnouncementOverlay->SetVisibility(ESlateVisibility::Visible);
 		}
 	}
 }

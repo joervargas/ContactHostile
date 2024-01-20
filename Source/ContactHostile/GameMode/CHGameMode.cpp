@@ -9,11 +9,15 @@
 #include "ContactHostile/PlayerState/CHPlayerState.h"
 
 
+namespace MatchState
+{
+	const FName Cooldown = FName("Cooldown");
+}
+
 ACHGameMode::ACHGameMode()
 {
 	bDelayedStart = true;
 }
-
 
 void ACHGameMode::BeginPlay()
 {
@@ -28,10 +32,18 @@ void ACHGameMode::Tick(float DeltaTime)
 
 	if (MatchState == MatchState::WaitingToStart)
 	{
-		CountDownTime = WarmupTime - (GetWorld()->GetTimeSeconds() + LevelStartingTime);
-		if (CountDownTime <= 0.f)
+		CountdownTime = WarmupTime - (GetWorld()->GetTimeSeconds() + LevelStartingTime);
+		if (CountdownTime <= 0.f)
 		{
 			StartMatch();
+		}
+	}
+	else if (MatchState == MatchState::InProgress)
+	{
+		CountdownTime = (WarmupTime + MatchTime) - (GetWorld()->GetTimeSeconds() + LevelStartingTime);
+		if (CountdownTime <= 0.f)
+		{
+			SetMatchState(MatchState::Cooldown);
 		}
 	}
 }
@@ -44,10 +56,10 @@ void ACHGameMode::OnMatchStateSet()
 	// Loop through all player controllers on the server
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; It++)
 	{
-		ACHPlayerController* CHPlayer = Cast<ACHPlayerController>(*It);
-		if (CHPlayer)
+		ACHPlayerController* CHPlayerController = Cast<ACHPlayerController>(*It);
+		if (CHPlayerController)
 		{
-			CHPlayer->OnMatchStateSet(MatchState);
+			CHPlayerController->OnMatchStateSet(MatchState);
 		}
 	}
 }
