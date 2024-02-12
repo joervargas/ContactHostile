@@ -47,7 +47,7 @@ protected:
 	void ServerCheckMatchState();
 
 	UFUNCTION(Client, Reliable)
-	void ClientJoinMidGame(FName LevelState, float LevelWarmupTime, float LevelMatchTime, float LevelStartingTime);
+	void ClientJoinMidGame(FName LevelState, float LevelWarmupTime, float LevelMatchTime, float LevelCooldownTime, float LevelStartingTime);
 
 public:
 
@@ -82,6 +82,9 @@ public:
 private:
 
 	UPROPERTY()
+	class ACHGameMode* CHGameMode;
+
+	UPROPERTY()
 	class ACHPlayerHUD* CHPlayerHUD;
 
 	UPROPERTY()
@@ -90,6 +93,7 @@ private:
 	float StartingTime = 0.f; // Level Starting Time
 	float MatchTime = 0.f; // Time length of match
 	float WarmupTime = 0.f; // Time length of countdown before match
+	float CooldownTime = 0.f; // Time length after Match ends and new match begins
 
 	uint32 CountdownInt = 0;
 

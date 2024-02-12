@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerStart.h"
 #include "ContactHostile/PlayerState/CHPlayerState.h"
+#include "ContactHostile/GameState/CHGameState.h"
 
 
 namespace MatchState
@@ -46,6 +47,14 @@ void ACHGameMode::Tick(float DeltaTime)
 			SetMatchState(MatchState::Cooldown);
 		}
 	}
+	else if (MatchState == MatchState::Cooldown)
+	{
+		CountdownTime = (CooldownTime + WarmupTime + MatchTime) - (GetWorld()->GetTimeSeconds() + LevelStartingTime);
+		if (CountdownTime <= 0.f)
+		{
+			RestartGame();
+		}
+	}
 }
 
 
@@ -66,12 +75,17 @@ void ACHGameMode::OnMatchStateSet()
 
 void ACHGameMode::PlayerEliminated(AContactHostileCharacter* EliminatedCharacter, ACHPlayerController* EliminatedController, ACHPlayerController* AttackerController)
 {
+	if (EliminatedController == nullptr || AttackerController == nullptr) return;
 	ACHPlayerState* AttackerPlayerState = AttackerController ? Cast<ACHPlayerState>(AttackerController->PlayerState) : nullptr;
 	ACHPlayerState* EliminatedPlayerState = EliminatedController ? Cast<ACHPlayerState>(EliminatedController->PlayerState) : nullptr;
 
-	if (AttackerPlayerState && AttackerPlayerState != EliminatedPlayerState)
+	ACHGameState* CHGameState = GetGameState<ACHGameState>();
+
+	if (AttackerPlayerState && AttackerPlayerState != EliminatedPlayerState && CHGameState)
 	{
 		AttackerPlayerState->AddToScore(1.f);
+		CHGameState->UpdateTopScore(AttackerPlayerState);
+
 		EliminatedPlayerState->AddToKilledCount(1);
 	}
 	//if (EliminatedPlayerState && EliminatedPlayerState != AttackerPlayerState)

@@ -10,8 +10,10 @@
 #include "Components/TextBlock.h"
 #include "Net/UnrealNetwork.h"
 #include "ContactHostile/GameMode/CHGameMode.h"
+#include "ContactHostile/ContactHostileComponents/CombatComponent.h"
 #include "Kismet/GameplayStatics.h"
-
+#include "ContactHostile/GameState/CHGameState.h"
+#include <ContactHostile/PlayerState/CHPlayerState.h>
 
 
 void ACHPlayerController::BeginPlay()
@@ -69,25 +71,28 @@ void ACHPlayerController::ServerCheckMatchState_Implementation()
 	{
 		WarmupTime = GameMode->WarmupTime;
 		MatchTime = GameMode->MatchTime;
+		CooldownTime = GameMode->CooldownTime;
 		StartingTime = GameMode->LevelStartingTime;
 
 		// Replicated
 		MatchState = GameMode->GetMatchState();
 
-		ClientJoinMidGame(MatchState, WarmupTime, MatchTime, StartingTime);
+		ClientJoinMidGame(MatchState, WarmupTime, MatchTime, CooldownTime, StartingTime);
 
-		if (CHPlayerHUD && MatchState == MatchState::WaitingToStart && CHPlayerHUD->AnnouncementOverlay == nullptr)
-		{
-			CHPlayerHUD->AddAnnouncement();
-		}
+		//if (CHPlayerHUD && MatchState == MatchState::WaitingToStart && CHPlayerHUD->AnnouncementOverlay == nullptr)
+		//{
+		//	CHPlayerHUD->AddAnnouncement();
+		//}
 	}
 }
 
-void ACHPlayerController::ClientJoinMidGame_Implementation(FName LevelState, float LevelWarmupTime, float LevelMatchTime, float LevelStartingTime)
+void ACHPlayerController::ClientJoinMidGame_Implementation(FName LevelState, float LevelWarmupTime, float LevelMatchTime, float LevelCooldownTime, float LevelStartingTime)
 {
 	WarmupTime = LevelWarmupTime;
 	MatchTime = LevelMatchTime;
+	CooldownTime = LevelCooldownTime;
 	StartingTime = LevelStartingTime;
+
 	MatchState = LevelState;
 
 	OnMatchStateSet(MatchState);
@@ -101,24 +106,24 @@ void ACHPlayerController::ClientJoinMidGame_Implementation(FName LevelState, flo
 void ACHPlayerController::SetHUDTime()
 {
 	float TimeLeft = 0.f;
-	if (MatchState == MatchState::WaitingToStart)
-	{
-		TimeLeft = WarmupTime - GetServerTime() + StartingTime;
-	}
-	if (MatchState == MatchState::InProgress)
-	{
-		TimeLeft = WarmupTime + MatchTime - GetServerTime() + StartingTime;
-	}
+	if (MatchState == MatchState::WaitingToStart) { TimeLeft = WarmupTime - GetServerTime() + StartingTime; }
+	else if (MatchState == MatchState::InProgress) { TimeLeft = WarmupTime + MatchTime - GetServerTime() + StartingTime; }
+	else if (MatchState == MatchState::Cooldown) { TimeLeft = CooldownTime + WarmupTime + MatchTime - GetServerTime() + StartingTime; }
+
+	uint32 SecondsLeft = FMath::CeilToInt(TimeLeft);
 
 	if (HasAuthority())
 	{
-	
+		CHGameMode = CHGameMode == nullptr ? Cast<ACHGameMode>(UGameplayStatics::GetGameMode(this)) : CHGameMode;
+		if (CHGameMode)
+		{
+			SecondsLeft = FMath::CeilToInt(CHGameMode->GetCountdownTime() + StartingTime);
+		}
 	}
 
-	uint32 SecondsLeft = FMath::CeilToInt(TimeLeft);
 	if (CountdownInt != SecondsLeft)
 	{
-		if (MatchState == MatchState::WaitingToStart)
+		if (MatchState == MatchState::WaitingToStart || MatchState == MatchState::Cooldown)
 		{
 			SetHUDAnnouncementTimer(TimeLeft);
 		}
@@ -273,6 +278,12 @@ void ACHPlayerController::SetHUDMatchTimer(float Time)
 
 	if (bHUDValid)
 	{
+		if (Time < 0.f)
+		{
+			CHPlayerHUD->PlayerOverlay->MatchTimerText->SetText(FText());
+			return;
+		}
+
 		int32 Minutes = FMath::FloorToInt(Time / 60.f);
 		int32 Seconds = Time - Minutes * 60;
 		FString TimerText = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds);
@@ -289,6 +300,12 @@ void ACHPlayerController::SetHUDAnnouncementTimer(float Time)
 
 	if (bHUDValid)
 	{
+		if (Time < 0.f) 
+		{
+			CHPlayerHUD->AnnouncementOverlay->WarmupTimeText->SetText(FText());
+			return; 
+		}
+
 		int32 Minutes = FMath::FloorToInt(Time / 60.f);
 		int32 Seconds = Time - Minutes * 60;
 		FString TimerText = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds);
@@ -341,9 +358,57 @@ void ACHPlayerController::HandleMatchCooldown()
 	if (CHPlayerHUD)
 	{
 		CHPlayerHUD->PlayerOverlay->RemoveFromParent();
-		if (CHPlayerHUD->AnnouncementOverlay)
+
+		bool bHudValid = CHPlayerHUD->AnnouncementOverlay &&
+			CHPlayerHUD->AnnouncementOverlay->AnnouncementText &&
+			CHPlayerHUD->AnnouncementOverlay->InfoText;
+
+		if (bHudValid)
 		{
+			FString AnnouncementText("New Match Starts In:");
+			CHPlayerHUD->AnnouncementOverlay->AnnouncementText->SetText(FText::FromString(AnnouncementText));
+
+			ACHGameState* CHGameState = Cast<ACHGameState>(UGameplayStatics::GetGameState(this));
+			ACHPlayerState* CHPlayerState = GetPlayerState<ACHPlayerState>();
+
+			FString InfoTextString("");
+			if (CHGameState && CHPlayerState)
+			{
+				TArray<ACHPlayerState*> TopPlayers = CHGameState->TopScoringPlayers;
+				if (TopPlayers.Num() == 0)
+				{
+					InfoTextString = FString("No winners");
+				}
+				else if (TopPlayers.Num() == 1 && TopPlayers[0] == CHPlayerState)
+				{
+					InfoTextString = FString("You win!");
+				}
+				else if (TopPlayers.Num() == 1)
+				{
+					InfoTextString = FString::Printf(TEXT("Winner:\n%s"), *TopPlayers[0]->GetPlayerName());
+				}
+				else if (TopPlayers.Num() > 1)
+				{
+					InfoTextString = FString("Tied:\n");
+					for (auto TiedPlayer : TopPlayers)
+					{
+						InfoTextString.Append(FString::Printf(TEXT("%s\n"), *TiedPlayer->GetPlayerName()));
+					}
+				}
+			}
+
+			CHPlayerHUD->AnnouncementOverlay->InfoText->SetText(FText::FromString(InfoTextString));
 			CHPlayerHUD->AnnouncementOverlay->SetVisibility(ESlateVisibility::Visible);
+		}
+	}
+	AContactHostileCharacter* CHCharacter = Cast<AContactHostileCharacter>(GetPawn());
+	if (CHCharacter)
+	{
+		CHCharacter->bDisableGameplay = true;
+		if (CHCharacter->GetCombat())
+		{
+			CHCharacter->GetCombat()->FireButtonPressed(false);
+			CHCharacter->GetCombat()->SetAiming(false);
 		}
 	}
 }

@@ -97,7 +97,7 @@ void UContactHostileAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
 	bUseFABRIK = CHCharacter->GetCombatState() != ECombatState::ECS_Reloading;
 
-	bUseAimOffsets = CHCharacter->GetCombatState() != ECombatState::ECS_Reloading;
+	bUseAimOffsets = CHCharacter->GetCombatState() != ECombatState::ECS_Reloading && !CHCharacter->bDisableGameplay;
 
-	bUseRightHandTransform = CHCharacter->GetCombatState() != ECombatState::ECS_Reloading;
+	bUseRightHandTransform = CHCharacter->GetCombatState() != ECombatState::ECS_Reloading && !CHCharacter->bDisableGameplay;
 }

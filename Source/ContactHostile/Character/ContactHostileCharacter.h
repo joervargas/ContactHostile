@@ -46,7 +46,7 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	//virtual void OnRep_ReplicatedMovement() override;
+	virtual void Destroyed() override;
 
 protected:
 
@@ -293,6 +293,8 @@ private:
 
 public:
 
+	UPROPERTY(Replicated)
+	bool bDisableGameplay = false;
 
 	FORCEINLINE FVector GetHorizontalVelocity() const { return HorizontalVelocity; }
 	void SetHorizontalVelocity();

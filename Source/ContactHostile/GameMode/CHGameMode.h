@@ -35,7 +35,7 @@ public:
 public:
 
 	UPROPERTY(EditDefaultsOnly)
-	float MatchTime = 120.f;
+	float MatchTime = 120.f; // Time length of Match
 
 	UPROPERTY(EditDefaultsOnly)
 	float WarmupTime = 10.f; // Countdown time before match
@@ -54,4 +54,8 @@ protected:
 private:
 
 	float CountdownTime = 0.f;
+
+public:
+
+	FORCEINLINE float GetCountdownTime() const { return CountdownTime; }
 };

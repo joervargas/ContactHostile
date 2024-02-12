@@ -36,6 +36,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
 
+	void SetAiming(bool bIsAiming);
+
+	void FireButtonPressed(bool bPressed);
+
 protected:
 
 	virtual void BeginPlay() override;
@@ -45,12 +49,8 @@ protected:
 
 	void SpawnDefaultWeapon();
 
-	void SetAiming(bool bIsAiming);
-
 	UFUNCTION(Server, unreliable)
 	void ServerSetAiming(bool bIsAiming);
-
-	void FireButtonPressed(bool bPressed);
 
 	void Fire();
 

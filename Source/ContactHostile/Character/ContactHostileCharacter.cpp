@@ -85,6 +85,7 @@ void AContactHostileCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	DOREPLIFETIME(AContactHostileCharacter, MeshStartingRelativeLocation);
 	DOREPLIFETIME(AContactHostileCharacter, MeshProneRelativeLocation);
 	DOREPLIFETIME(AContactHostileCharacter, Health);
+	DOREPLIFETIME(AContactHostileCharacter, bDisableGameplay);
 	DOREPLIFETIME_CONDITION(AContactHostileCharacter, OverlappingWeapon, COND_OwnerOnly);
 
 }
@@ -156,6 +157,16 @@ void AContactHostileCharacter::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Released, this, &AContactHostileCharacter::FireButtonReleased);
 }
 
+void AContactHostileCharacter::Destroyed()
+{
+	ACHGameMode* CHGameMode = Cast<ACHGameMode>(UGameplayStatics::GetGameMode(this));
+	bool bMatchNotInProgress = CHGameMode && CHGameMode->GetMatchState() != MatchState::InProgress;
+	if (Combat && Combat->EquippedWeapon && bMatchNotInProgress)
+	{
+		Combat->EquippedWeapon->Destroy();
+	}
+}
+
 //void AContactHostileCharacter::OnRep_ReplicatedMovement()
 //{
 //	Super::OnRep_ReplicatedMovement();
@@ -166,6 +177,7 @@ void AContactHostileCharacter::SetupPlayerInputComponent(UInputComponent* Player
 
 void AContactHostileCharacter::MoveForward(float Value)
 {
+	if (bDisableGameplay) { return; }
 	if ((Controller != nullptr) && (Value != 0.0f))
 	{
 		if (bIsProne)
@@ -253,6 +265,7 @@ void AContactHostileCharacter::ClientCalcRelativeLocations_Implementation()
 
 void AContactHostileCharacter::MoveRight(float Value)
 {
+	if (bDisableGameplay) { return; }
 	if ((Controller != nullptr) && (Value != 0.0f))
 	{
 		AddMovementInput(GetActorRightVector() * Value);
@@ -273,6 +286,7 @@ void AContactHostileCharacter::AddControllerPitchInput(float Value)
 
 void AContactHostileCharacter::Jump()
 {
+	if (bDisableGameplay) { return; }
 	if (!bIsProne || bIsCrouched)
 	{
 		Super::Jump();
@@ -281,6 +295,7 @@ void AContactHostileCharacter::Jump()
 
 void AContactHostileCharacter::SprintButtonPressed()
 {
+	if (bDisableGameplay) { return; }
 	if (HasAuthority())
 	{
 		bSprintButtonPressed = true;
@@ -300,6 +315,7 @@ void AContactHostileCharacter::ServerSprintButtonPressed_Implementation()
 
 void AContactHostileCharacter::SprintButtonReleased()
 {
+	if (bDisableGameplay) { return; }
 	if (HasAuthority())
 	{
 		bSprintButtonPressed = false;
@@ -335,6 +351,7 @@ bool AContactHostileCharacter::SprintReady()
 
 void AContactHostileCharacter::EquipButtonPressed()
 {
+	if (bDisableGameplay) { return; }
 	if (HasAuthority())
 	{
 		if (Combat && OverlappingWeapon && OverlappingWeapon->GetWeaponState() != EWeaponState::EWS_Equipped)
@@ -350,6 +367,7 @@ void AContactHostileCharacter::EquipButtonPressed()
 
 void AContactHostileCharacter::ReloadButtonPressed()
 {
+	if (bDisableGameplay) { return; }
 	if (Combat)
 	{
 		Combat->Reload();
@@ -366,12 +384,14 @@ void AContactHostileCharacter::ServerEquipButtonPressed_Implementation()
 
 void AContactHostileCharacter::CrouchProneButtonPressed()
 {
+	if (bDisableGameplay) { return; }
 	// Start Button Timer
 	CrouchProneBtnHoldTime = FDateTime::Now().GetTicks();
 }
 
 void AContactHostileCharacter::CrouchProneButtonRepeat()
 {
+	if (bDisableGameplay) { return; }
 	if (bCrouchProneBtnRepeatFlag) return;
 
 	bCrouchProneBtnRepeatFlag = true;
@@ -384,6 +404,7 @@ void AContactHostileCharacter::CrouchProneButtonRepeat()
 
 void AContactHostileCharacter::CrouchProneButtonReleased()
 {
+	if (bDisableGameplay) { return; }
 	if (bCrouchProneBtnRepeatFlag) // Already andled in CrouchProneBtnRepeat function
 	{
 		bCrouchProneBtnRepeatFlag = false;
@@ -546,6 +567,7 @@ bool AContactHostileCharacter::ProneReady()
 
 void AContactHostileCharacter::AimButtonPressed()
 {
+	if (bDisableGameplay) { return; }
 	if (Combat)
 	{
 		Combat->SetAiming(true);
@@ -554,6 +576,7 @@ void AContactHostileCharacter::AimButtonPressed()
 
 void AContactHostileCharacter::AimButtonReleased()
 {
+	if (bDisableGameplay) { return; }
 	if (Combat)
 	{
 		Combat->SetAiming(false);
@@ -584,6 +607,7 @@ bool AContactHostileCharacter::IsAiming()
 
 void AContactHostileCharacter::FireButtonPressed()
 {
+	if (bDisableGameplay) { return; }
 	if (Combat)
 	{
 		Combat->FireButtonPressed(true);
@@ -592,6 +616,7 @@ void AContactHostileCharacter::FireButtonPressed()
 
 void AContactHostileCharacter::FireButtonReleased()
 {
+	if (bDisableGameplay) { return; }
 	if (Combat)
 	{
 		Combat->FireButtonPressed(false);
@@ -710,8 +735,14 @@ void AContactHostileCharacter::SetSpeed()
 
 void AContactHostileCharacter::CalcAimOffset(float DeltaTime)
 {
-	bool bIsInAir = GetCharacterMovement()->IsFalling();
+	if (bDisableGameplay) 
+	{
+		bUseControllerRotationYaw = false;
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		return; 
+	}
 
+	bool bIsInAir = GetCharacterMovement()->IsFalling();
 	// Standing still and not in air
 	if (Speed == 0.f && !bIsInAir)
 	{
@@ -970,7 +1001,11 @@ void AContactHostileCharacter::MulticastElim_Implementation()
 
 	GetMesh()->SetSimulatePhysics(true);
 	if (GetCharacterMovement()) { GetCharacterMovement()->DisableMovement(); }
-	if (CHPlayerController) { DisableInput(CHPlayerController); }
+	if (CHPlayerController) 
+	{ 
+		bDisableGameplay = true;
+		if (Combat) { Combat->FireButtonPressed(false); }
+	}
 
 	FVector DamageVector = DamageHitRotation.Vector();
 	GetMesh()->AddImpulse((-DamageVector.GetSafeNormal()) * DamageImpulseScaler);
