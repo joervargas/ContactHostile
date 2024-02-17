@@ -66,6 +66,6 @@ public:
 	FORCEINLINE void SetHUDPackageCrossHairSpread(const float Spread) { HUDPackage.CrosshairSpread = Spread; }
 	FORCEINLINE void SetHUDPackageCrosshairColor(const FLinearColor Color) { HUDPackage.CrosshairsColor = Color; }
 
-	void AddCharacterOverlay();
+	void AddPlayerOverlay();
 	void AddAnnouncement();
 };

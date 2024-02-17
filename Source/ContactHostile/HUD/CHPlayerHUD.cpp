@@ -12,7 +12,7 @@ void ACHPlayerHUD::BeginPlay()
 
 }
 
-void ACHPlayerHUD::AddCharacterOverlay()
+void ACHPlayerHUD::AddPlayerOverlay()
 {
 	APlayerController* PlayerController = GetOwningPlayerController();
 	if (PlayerController && PlayerOverlayClass)

@@ -9,5 +9,7 @@ public class ContactHostile : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "HeadMountedDisplay" });
+
+		PrivateDependencyModuleNames.Add("OnlineSubsystem");
 	}
 }

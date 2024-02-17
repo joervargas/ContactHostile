@@ -97,9 +97,13 @@ void ACHPlayerController::ClientJoinMidGame_Implementation(FName LevelState, flo
 
 	OnMatchStateSet(MatchState);
 
-	if (CHPlayerHUD && MatchState == MatchState::WaitingToStart)
+	if (CHPlayerHUD)
 	{
 		CHPlayerHUD->AddAnnouncement();
+		if (MatchState != MatchState::WaitingToStart)
+		{
+			CHPlayerHUD->AnnouncementOverlay->SetVisibility(ESlateVisibility::Hidden);
+		}
 	}
 }
 
@@ -344,7 +348,8 @@ void ACHPlayerController::HandleMatchHasStarted()
 	CHPlayerHUD = CHPlayerHUD == nullptr ? Cast<ACHPlayerHUD>(GetHUD()) : CHPlayerHUD;
 	if (CHPlayerHUD)
 	{
-		CHPlayerHUD->AddCharacterOverlay();
+		//CHPlayerHUD->AddCharacterOverlay();
+		if (!CHPlayerHUD->PlayerOverlay) { CHPlayerHUD->AddPlayerOverlay(); }
 		if (CHPlayerHUD->AnnouncementOverlay)
 		{
 			CHPlayerHUD->AnnouncementOverlay->SetVisibility(ESlateVisibility::Hidden);
