@@ -50,10 +50,10 @@ void AProjectile::BeginPlay()
 	}
 
 	// Bind hit event to collisinbox
-	if (HasAuthority())
-	{
-		CollisionBox->OnComponentHit.AddDynamic(this, &AProjectile::OnHit);
-	}
+	//if (HasAuthority())
+	//{
+		/*CollisionBox->OnComponentHit.AddDynamic(this, &AProjectile::OnHit);*/
+	//}
 }
 
 // Called every frame
@@ -66,42 +66,22 @@ void AProjectile::Tick(float DeltaTime)
 void AProjectile::Destroyed()
 {
 	Super::Destroyed();
+
 	//ServerPlayImpact();
-	if (ImpactParticles)
-	{
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
-	}
-	if (ImpactSound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
-	}
+	//if (ImpactParticles)
+	//{
+	//	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+	//}
+	//if (ImpactSound)
+	//{
+	//	UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	//}
 }
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	//MulticastPlayImpact();
-	Destroy();
-}
 
-void AProjectile::ServerPlayImpact_Implementation()
-{
-	if (HasAuthority())
-	{
-		if (ImpactParticles)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
-		}
-		if (ImpactSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
-		}
-	} else {
-		MulticastPlayImpact();
-	}
-}
-
-void AProjectile::MulticastPlayImpact_Implementation()
-{
 	if (ImpactParticles)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
@@ -110,7 +90,35 @@ void AProjectile::MulticastPlayImpact_Implementation()
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
 	}
+
+	Destroy();
 }
 
+//void AProjectile::ServerPlayImpact_Implementation()
+//{
+//	if (HasAuthority())
+//	{
+//		if (ImpactParticles)
+//		{
+//			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+//		}
+//		if (ImpactSound)
+//		{
+//			UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+//		}
+//	} else {
+//		MulticastPlayImpact();
+//	}
+//}
 
-
+//void AProjectile::MulticastPlayImpact_Implementation()
+//{
+//	if (ImpactParticles)
+//	{
+//		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+//	}
+//	if (ImpactSound)
+//	{
+//		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+//	}
+//}

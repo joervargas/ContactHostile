@@ -19,9 +19,9 @@ public:
 
 	AProjectileRocket();
 
-protected:
+	virtual void Destroyed() override;
 
-	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+protected:
 
 	UPROPERTY(EditAnywhere)
 	float InnerBlastRadius = 200.f; // Inner radius of the radial blast damage
@@ -34,6 +34,34 @@ protected:
 	
 	UPROPERTY(EditAnywhere)
 	float MinimumDammage = 10.f; // Minimum amount of damage applicable to other pawns
+
+	UPROPERTY(EditAnywhere)
+	class UNiagaraSystem* TrailSystem;
+
+	UPROPERTY()
+	class UNiagaraComponent* TrailComponent;
+
+	FTimerHandle DestroyTimer;
+
+	UPROPERTY(EditAnywhere)
+	float DestroyTime = 3.f;
+
+	UPROPERTY(EditAnywhere)
+	USoundCue* RocketTrailSoundCueLoop;
+
+	UPROPERTY()
+	UAudioComponent* RocketTrailSoundComponent;
+
+	UPROPERTY(EditAnywhere)
+	USoundAttenuation* RocketTrailLoopAtenuation;
+
+protected:
+
+	virtual void BeginPlay() override;
+
+	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	void DestroyTimerFinished();
 
 private:
 

@@ -98,6 +98,12 @@ protected:
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
 
+	UFUNCTION()
+	void ReceiveSpotDamage(AActor* DamagedActor, float Damage, AController* InstigatorController, FVector HitLocation, UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const UDamageType* DamageType, AActor* DamageCauser);
+
+	UFUNCTION()
+	void ReceiveBlastDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, FVector Origin, FHitResult Hit, AController* InstigatorController, AActor* DamageCauser);
+
 	void UpdateHUDHealth();
 
 	// Poll for any relevant classes for initialization
@@ -218,8 +224,15 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	UAnimMontage* HitReactMontage; // Set in Blueprints
 
-	FRotator DamageHitRotation;
 	FHitResult DamageHitResult;
+
+	//UPROPERTY(Replicated)
+	//FRotator DamageHitRotation;
+
+	UPROPERTY(Replicated)
+	FVector DamageHitVector;
+	
+	UPROPERTY(Replicated)
 	float DamageImpulseScaler;
 
 	UPROPERTY(EditAnywhere, Category = Combat)

@@ -29,16 +29,13 @@ protected:
 	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
-	UFUNCTION(Server, unreliable)
-	void ServerPlayImpact();
-	
-	UFUNCTION(NetMulticast, unreliable)
-	void MulticastPlayImpact();
+	//UFUNCTION(Server, unreliable)
+	//void ServerPlayImpact();
+	//
+	//UFUNCTION(NetMulticast, unreliable)
+	//void MulticastPlayImpact();
 
 private:
-
-	UPROPERTY(EditAnywhere)
-	UBoxComponent* CollisionBox;
 
 	UPROPERTY(VisibleAnywhere)
 	class UProjectileMovementComponent* ProjectileMovementComponent;
@@ -49,18 +46,22 @@ private:
 	UPROPERTY()
 	class UParticleSystemComponent* TracerComponent;
 
-	UPROPERTY(EditAnywhere)
-	UParticleSystem* ImpactParticles;
-
-	UPROPERTY(EditAnywhere)
-	class USoundCue* ImpactSound;
-
 public:
 	
 
 protected:
 
 	UPROPERTY(EditAnywhere)
+	UBoxComponent* CollisionBox;
+
+	UPROPERTY(EditAnywhere)
+	UParticleSystem* ImpactParticles;
+
+	UPROPERTY(EditAnywhere)
+	class USoundCue* ImpactSound;
+
+	UPROPERTY(EditAnywhere)
 	float Damage = 20.f;
+
 
 };

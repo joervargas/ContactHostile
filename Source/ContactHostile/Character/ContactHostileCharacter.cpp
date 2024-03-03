@@ -86,6 +86,9 @@ void AContactHostileCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	DOREPLIFETIME(AContactHostileCharacter, MeshProneRelativeLocation);
 	DOREPLIFETIME(AContactHostileCharacter, Health);
 	DOREPLIFETIME(AContactHostileCharacter, bDisableGameplay);
+	//DOREPLIFETIME(AContactHostileCharacter, DamageHitRotation);
+	DOREPLIFETIME(AContactHostileCharacter, DamageHitVector);
+	DOREPLIFETIME(AContactHostileCharacter, DamageImpulseScaler);
 	DOREPLIFETIME_CONDITION(AContactHostileCharacter, OverlappingWeapon, COND_OwnerOnly);
 
 }
@@ -107,10 +110,12 @@ void AContactHostileCharacter::BeginPlay()
 	
 	CalcRelativeLocations();
 	UpdateHUDHealth();
-	if (HasAuthority())
-	{
-		OnTakeAnyDamage.AddDynamic(this, &AContactHostileCharacter::ReceiveDamage);
-	}
+	//if (HasAuthority())
+	//{
+		//OnTakeAnyDamage.AddDynamic(this, &AContactHostileCharacter::ReceiveDamage);
+		OnTakePointDamage.AddDynamic(this, &AContactHostileCharacter::ReceiveSpotDamage);
+		OnTakeRadialDamage.AddDynamic(this, &AContactHostileCharacter::ReceiveBlastDamage);
+	//}
 }
 
 // Called every frame
@@ -199,7 +204,7 @@ float AContactHostileCharacter::CalcProneCollisions(float MoveValue)
 	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, LineDistance, ECollisionChannel::ECC_Visibility);
 	if (bHit)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("**Line Hit**"));
+		//UE_LOG(LogTemp, Warning, TEXT("**Line Hit**"));
 		return 0.0f;
 	}
 	return MoveValue;
@@ -863,14 +868,69 @@ void AContactHostileCharacter::ReceiveDamage(AActor* DamagedActor, float Damage,
 {
 	Health = FMath::Clamp(Health - Damage, 0.0f, MaxHealth);
 	UpdateHUDHealth();
+
+	// Calculate Direction of damage
+	FRotator DamagePlayerLookAt = UKismetMathLibrary::FindLookAtRotation(DamagedActor->GetActorLocation(), DamageCauser->GetActorLocation());
+	//DamageHitRotation = DamagePlayerLookAt - GetControlRotation();
+	DamageImpulseScaler = Damage * 1000;
+	//UE_LOG(LogTemp, Warning, TEXT("Recieve Damage! Damage Vector %s Damage Impulse Scalar %f"), *DamageHitRotation.Vector().ToString(), DamageImpulseScaler);
 	PlayHitReactMontage();
 
+	if (Health == 0)
+	{
+		ACHGameMode* CHGameMode = GetWorld()->GetAuthGameMode<ACHGameMode>();
+		if (CHGameMode)
+		{
+			CHPlayerController = CHPlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : CHPlayerController;
+			ACHPlayerController* AttackerController = Cast<ACHPlayerController>(InstigatorController);
+			CHGameMode->PlayerEliminated(this, CHPlayerController, AttackerController);
+		}
+	}
+}
+
+void AContactHostileCharacter::ReceiveSpotDamage(AActor* DamagedActor, float Damage, class AController* InstigatorController, FVector HitLocation, UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const UDamageType* DamageType, AActor* DamageCauser)
+{
+	Health = FMath::Clamp(Health - Damage, 0.0f, MaxHealth);
+	UpdateHUDHealth();
+
+	// Calculate Direction of damage
 	FRotator DamagePlayerLookAt = UKismetMathLibrary::FindLookAtRotation(DamagedActor->GetActorLocation(), DamageCauser->GetActorLocation());
-	DamageHitRotation = DamagePlayerLookAt - GetControlRotation();
-	UE_LOG(LogTemp, Warning, TEXT("HitRotation: %s"), *DamageHitRotation.ToString());
-	//UE_LOG(LogTemp, Warning, TEXT("DamageHitResult: %s"), *DamageHitResult.ImpactPoint.Rotation().ToString());
-	//HitRotation.Vector();
+	//DamageHitRotation = DamagePlayerLookAt - GetControlRotation();
+	DamageHitVector = ShotFromDirection;
 	DamageImpulseScaler = Damage * 1000;
+	//UE_LOG(LogTemp, Warning, TEXT("Recieve Damage! Damage Vector %s Damage Impulse Scalar %f"), *DamageHitRotation.Vector().ToString(), DamageImpulseScaler);
+	UE_LOG(LogTemp, Warning, TEXT("RecieveSpotDamage()! Damage Vector %s Damage Impulse Scalar %f"), *DamageHitVector.ToString(), DamageImpulseScaler);
+
+	PlayHitReactMontage();
+
+	if (Health == 0)
+	{
+		ACHGameMode* CHGameMode = GetWorld()->GetAuthGameMode<ACHGameMode>();
+		if (CHGameMode)
+		{
+			CHPlayerController = CHPlayerController == nullptr ? Cast<ACHPlayerController>(Controller) : CHPlayerController;
+			ACHPlayerController* AttackerController = Cast<ACHPlayerController>(InstigatorController);
+			CHGameMode->PlayerEliminated(this, CHPlayerController, AttackerController);
+		}
+	}
+}
+
+void AContactHostileCharacter::ReceiveBlastDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, FVector Origin, FHitResult Hit, AController* InstigatorController, AActor* DamageCauser)
+{
+	Health = FMath::Clamp(Health - Damage, 0.0f, MaxHealth);
+	UpdateHUDHealth();
+
+	// Calculate Direction of damage
+	//FRotator DamagePlayerLookAt = UKismetMathLibrary::FindLookAtRotation(DamagedActor->GetActorLocation(), Origin);
+
+	//DamageHitRotation = DamagePlayerLookAt - GetControlRotation();
+	//DamageHitVector = DamagePlayerLookAt.Vector();
+	DamageHitVector = Hit.ImpactNormal;
+	DamageImpulseScaler = Damage * 1000;
+	//UE_LOG(LogTemp, Warning, TEXT("Recieve Damage! Damage Vector %s Damage Impulse Scalar %f"), *DamageHitRotation.Vector().ToString(), DamageImpulseScaler);
+	UE_LOG(LogTemp, Warning, TEXT("RecieveBlastDamage()! Damage Vector %s Damage Impulse Scalar %f"), *DamageHitVector.ToString(), DamageImpulseScaler);
+
+	PlayHitReactMontage();
 
 	if (Health == 0)
 	{
@@ -946,6 +1006,7 @@ void AContactHostileCharacter::PlayHitReactMontage()
 	{
 		AnimInstance->Montage_Play(HitReactMontage);
 		FName SectionName;
+		FRotator DamageHitRotation = DamageHitVector.Rotation();
 		if (DamageHitRotation.Yaw < 20.f && DamageHitRotation.Yaw > -20.f)
 		{
 			SectionName = FName("HitReact_Front");
@@ -1007,8 +1068,11 @@ void AContactHostileCharacter::MulticastElim_Implementation()
 		if (Combat) { Combat->FireButtonPressed(false); }
 	}
 
-	FVector DamageVector = DamageHitRotation.Vector();
-	GetMesh()->AddImpulse((-DamageVector.GetSafeNormal()) * DamageImpulseScaler);
+	//FVector DamageVector = DamageHitRotation.Vector();
+	//GetMesh()->AddImpulse((-DamageVector.GetSafeNormal()) * DamageImpulseScaler);
+	GetMesh()->AddImpulse((-DamageHitVector) * DamageImpulseScaler);
+	//UE_LOG(LogTemp, Warning, TEXT("Death! Damage Vector %s Damage Impulse Scalar %f"), *DamageVector.ToString(), DamageImpulseScaler);
+	UE_LOG(LogTemp, Warning, TEXT("Death! Damage Vector %s Damage Impulse Scalar %f"), *DamageHitVector.ToString(), DamageImpulseScaler);
 }
 
 

@@ -5,7 +5,15 @@
 #include "Kismet/GameplayStatics.h"
 #include "ContactHostile/Character/ContactHostileCharacter.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Components/BoxComponent.h"
 
+
+void AProjectileBullet::BeginPlay()
+{
+	Super::BeginPlay();
+
+	CollisionBox->OnComponentHit.AddDynamic(this, &AProjectileBullet::OnHit);
+}
 
 void AProjectileBullet::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -18,7 +26,9 @@ void AProjectileBullet::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 		{
 			//CHCharacter->SetDamageHitResult(Hit);
 			//CHCharacter->SetDamageImpulseScaler(Damage * 1000);
-			UGameplayStatics::ApplyDamage(OtherActor, Damage, OwnerController, this, UDamageType::StaticClass());
+			//UGameplayStatics::ApplyDamage(OtherActor, Damage, OwnerController, this, UDamageType::StaticClass());
+			
+			UGameplayStatics::ApplyPointDamage(OtherActor, Damage, Hit.ImpactNormal, Hit, OwnerController, this, UDamageType::StaticClass());
 		}
 	}
 	
